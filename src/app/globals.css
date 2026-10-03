@@ -1,0 +1,243 @@
+@import "tailwindcss";
+
+/*
+ * UI mode tokens (light / dark / system). These style menus, panels, text and
+ * navigation only. The gameplay stage is styled by the factory theme instead
+ * (the --fx-* variables from src/config/themes.ts).
+ */
+:root {
+  --sf-bg: #f3f7fd;
+  --sf-surface: #ffffff;
+  --sf-surface-2: #e9f0fa;
+  --sf-text: #10233f;
+  --sf-muted: #5a6f8f;
+  --sf-border: #d5e0ef;
+
+  --sf-blue-900: #0b2a63;
+  --sf-blue-700: #0f55a8;
+  --sf-blue-500: #138fe8;
+  --sf-cyan: #63d5ff;
+  --sf-orange-500: #ff9f0a;
+  --sf-gold-400: #ffc72c;
+  --sf-success: #2fb97c;
+  --sf-on-brand: #ffffff;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode="light"]) {
+    --sf-bg: #0a1424;
+    --sf-surface: #13213a;
+    --sf-surface-2: #1b2d4d;
+    --sf-text: #eaf2ff;
+    --sf-muted: #9bb0d0;
+    --sf-border: #2a3f63;
+    --sf-blue-700: #3d8fe6;
+    color-scheme: dark;
+  }
+}
+
+:root[data-mode="dark"] {
+  --sf-bg: #0a1424;
+  --sf-surface: #13213a;
+  --sf-surface-2: #1b2d4d;
+  --sf-text: #eaf2ff;
+  --sf-muted: #9bb0d0;
+  --sf-border: #2a3f63;
+  --sf-blue-700: #3d8fe6;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--sf-bg);
+  --color-surface: var(--sf-surface);
+  --color-surface-2: var(--sf-surface-2);
+  --color-ink: var(--sf-text);
+  --color-muted: var(--sf-muted);
+  --color-line: var(--sf-border);
+  --color-navy: var(--sf-blue-900);
+  --color-brand-deep: var(--sf-blue-700);
+  --color-brand: var(--sf-blue-500);
+  --color-cyan: var(--sf-cyan);
+  --color-orange: var(--sf-orange-500);
+  --color-gold: var(--sf-gold-400);
+  --color-success: var(--sf-success);
+  --color-stage-ink: var(--fx-ink);
+  --color-stage-soft: var(--fx-ink-soft);
+  --font-sans: "Nunito Variable", ui-rounded, "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--sf-bg);
+  color: var(--sf-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 3px solid var(--sf-orange-500);
+  outline-offset: 2px;
+}
+
+/* ---------- Gameplay stage ---------- */
+
+.sf-stage {
+  color: var(--fx-ink);
+  background:
+    linear-gradient(var(--fx-grid) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, var(--fx-grid) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(180deg, var(--fx-stage-a), var(--fx-stage-b));
+}
+
+.sf-stage-golden {
+  box-shadow:
+    inset 0 0 0 3px var(--sf-gold-400),
+    inset 0 0 60px rgba(255, 199, 44, 0.35);
+}
+
+/* Conveyor silhouette along the bottom of the stage. */
+.sf-belt {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--fx-belt) 0 22px,
+    var(--fx-belt-stripe) 22px 26px
+  );
+  background-size: 26px 100%;
+  animation: sf-belt 1.1s linear infinite;
+  opacity: 0.55;
+}
+
+/* Sizes the machine to the largest 4:3 box that fits its slot. */
+.sf-machine-slot {
+  container-type: size;
+}
+
+.sf-machine-box {
+  width: min(100cqw, 100cqh * 4 / 3);
+  aspect-ratio: 4 / 3;
+}
+
+/* Anything the player drags on: no scrolling, selection or callouts mid-gesture. */
+.sf-machine-surface {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  background: transparent;
+}
+
+.sf-machine-surface:focus-visible {
+  outline-offset: -4px;
+}
+
+/* SVG parts animate around their own center. */
+.sf-spin-fast,
+.sf-pulse,
+.sf-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.sf-spin-fast {
+  animation: sf-spin 0.35s linear infinite;
+}
+
+.sf-pulse {
+  animation: sf-pulse 1.1s ease-in-out infinite;
+}
+
+.sf-twinkle {
+  animation: sf-twinkle 1.6s ease-in-out infinite;
+}
+
+.sf-guide line[stroke-dasharray] {
+  animation: sf-dash 0.9s linear infinite;
+}
+
+.sf-guide-active line:first-child {
+  opacity: 0.55;
+}
+
+.sf-shine {
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.75) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: sf-shine 0.7s ease-out 1 both;
+}
+
+@keyframes sf-belt {
+  to {
+    background-position: -26px 0;
+  }
+}
+
+@keyframes sf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sf-pulse {
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes sf-twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sf-dash {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+
+@keyframes sf-shine {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -40% 0;
+  }
+}
+
+/* Reduced motion: keep state visible, drop the decorative movement. */
+[data-reduced-motion="true"] .sf-belt,
+[data-reduced-motion="true"] .sf-spin-fast,
+[data-reduced-motion="true"] .sf-pulse,
+[data-reduced-motion="true"] .sf-twinkle,
+[data-reduced-motion="true"] .sf-shine,
+[data-reduced-motion="true"] .sf-guide line[stroke-dasharray] {
+  animation: none;
+}
+
+/* ---------- Form controls ---------- */
+
+input[type="range"] {
+  accent-color: var(--sf-blue-500);
+  height: 44px;
+}

@@ -1,0 +1,92 @@
+import { describe, expect, it } from "vitest";
+import {
+  SAVE_KEY,
+  createFreshSave,
+  getLastCorruptRaw,
+  loadSave,
+  migrateSave,
+  writeSave,
+  type StorageLike,
+} from "./saveService";
+
+function fakeStorage(initial: Record<string, string> = {}): StorageLike & { data: Record<string, string> } {
+  const data = { ...initial };
+  return {
+    data,
+    getItem: (key) => (key in data ? data[key] : null),
+    setItem: (key, value) => {
+      data[key] = value;
+    },
+    removeItem: (key) => {
+      delete data[key];
+    },
+  };
+}
+
+describe("save service", () => {
+  it("creates a fresh save when nothing is stored", () => {
+    const { data, status } = loadSave(fakeStorage());
+    expect(status).toBe("fresh");
+    expect(data.schemaVersion).toBe(1);
+    expect(data.player).toMatchObject({ coins: 0, xp: 0, factoryLevel: 1 });
+    expect(data.unlocks.products).toEqual(["woodBlock"]);
+  });
+
+  it("round-trips a save", () => {
+    const storage = fakeStorage();
+    const save = createFreshSave();
+    save.player.coins = 321;
+    save.player.factoryLevel = 3;
+    save.upgrades.betterMaterials = 2;
+    expect(writeSave(save, storage)).toBe(true);
+
+    const loaded = loadSave(storage);
+    expect(loaded.status).toBe("loaded");
+    expect(loaded.data.player.coins).toBe(321);
+    expect(loaded.data.upgrades.betterMaterials).toBe(2);
+  });
+
+  it("falls back to a fresh save on invalid JSON and keeps the raw text", () => {
+    const storage = fakeStorage({ [SAVE_KEY]: "{not json" });
+    const { data, status } = loadSave(storage);
+    expect(status).toBe("corrupt");
+    expect(data.player.coins).toBe(0);
+    expect(getLastCorruptRaw()).toBe("{not json");
+  });
+
+  it("rejects saves that fail validation", () => {
+    const negative = createFreshSave();
+    negative.player.coins = -50;
+    expect(migrateSave(negative)).toBeNull();
+
+    expect(migrateSave({ schemaVersion: 1 })).toBeNull();
+    expect(migrateSave({ schemaVersion: 999 })).toBeNull();
+    expect(migrateSave("nope")).toBeNull();
+    expect(migrateSave(null)).toBeNull();
+  });
+
+  it("repairs unlocks the saved level entitles the player to", () => {
+    const save = createFreshSave();
+    save.player.factoryLevel = 5;
+    const migrated = migrateSave(save);
+    expect(migrated?.unlocks.machines).toEqual(expect.arrayContaining(["stamper", "polisher"]));
+    expect(migrated?.unlocks.products).toContain("soapBar");
+  });
+
+  it("survives storage being unavailable or throwing", () => {
+    expect(loadSave(null).status).toBe("unavailable");
+    expect(writeSave(createFreshSave(), null)).toBe(false);
+
+    const throwing: StorageLike = {
+      getItem: () => {
+        throw new Error("blocked");
+      },
+      setItem: () => {
+        throw new Error("quota");
+      },
+      removeItem: () => {},
+    };
+    expect(loadSave(throwing).status).toBe("unavailable");
+    expect(writeSave(createFreshSave(), throwing)).toBe(false);
+  });
+});

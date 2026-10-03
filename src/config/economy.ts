@@ -1,0 +1,43 @@
+import type { QualityTier } from "@/types/game";
+
+export interface QualityBand {
+  min: number;
+  label: string;
+  multiplier: number;
+  tier: QualityTier;
+}
+
+/** Ordered from best to worst; the first band whose `min` is met applies. */
+export const qualityBands: QualityBand[] = [
+  { min: 100, label: "PERFECT", multiplier: 1.3, tier: "perfect" },
+  { min: 95, label: "Excellent", multiplier: 1.2, tier: "excellent" },
+  { min: 85, label: "Great", multiplier: 1.1, tier: "good" },
+  { min: 70, label: "Good", multiplier: 1.0, tier: "good" },
+  { min: 50, label: "Okay", multiplier: 0.9, tier: "low" },
+  { min: 0, label: "Rough", multiplier: 0.8, tier: "low" },
+];
+
+/** Ordered from highest streak to lowest. */
+export const streakTiers: { min: number; bonus: number }[] = [
+  { min: 12, bonus: 0.2 },
+  { min: 8, bonus: 0.15 },
+  { min: 5, bonus: 0.1 },
+  { min: 3, bonus: 0.05 },
+  { min: 0, bonus: 0 },
+];
+
+export const economy = {
+  /** A non-perfect result at or above this only costs one streak step. */
+  streakKeepThreshold: 70,
+  goldenMultiplier: 5,
+  xp: {
+    machineBase: 2,
+    qualityDivisor: 20,
+    completionBase: 5,
+    goldenBonus: 5,
+  },
+  level: {
+    base: 100,
+    exponent: 1.35,
+  },
+} as const;

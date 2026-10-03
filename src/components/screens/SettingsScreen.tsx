@@ -1,0 +1,205 @@
+"use client";
+
+import { useState, type ReactNode } from "react";
+import { audio } from "@/audio/audioManager";
+import { DebugPanel } from "@/components/overlays/DebugPanel";
+import { Button } from "@/components/ui/Button";
+import { Icon, type IconName } from "@/components/ui/Icon";
+import { resetGame } from "@/stores/persistence";
+import { usePlayerStore } from "@/stores/playerStore";
+import { useSettingsStore } from "@/stores/settingsStore";
+import type { ParticleDensity, ThemeMode } from "@/types/settings";
+import { ScreenFrame } from "./ScreenFrame";
+
+function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-line py-2 last:border-b-0">
+      <div className="min-w-0">
+        <p className="font-extrabold">{label}</p>
+        {hint && <p className="text-xs font-bold text-muted">{hint}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => {
+        onChange(!checked);
+        audio.play("uiClick");
+      }}
+      className="flex h-11 w-16 shrink-0 items-center"
+    >
+      <span className={`flex h-8 w-14 items-center rounded-full p-1 transition-colors ${checked ? "bg-brand" : "bg-line"}`}>
+        <span className={`size-6 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-6" : ""}`} />
+      </span>
+    </button>
+  );
+}
+
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: { value: T; label: string; icon?: IconName }[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex shrink-0 rounded-2xl bg-surface-2 p-1">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-checked={value === option.value}
+          onClick={() => {
+            onChange(option.value);
+            audio.play("uiClick");
+          }}
+          className={`flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-extrabold transition-colors ${
+            value === option.value ? "bg-brand-deep text-white" : "text-muted"
+          }`}
+        >
+          {option.icon && <Icon name={option.icon} size={16} />}
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Volume({ label, value, disabled, onChange }: { label: string; value: number; disabled: boolean; onChange: (value: number) => void }) {
+  return (
+    <input
+      type="range"
+      min={0}
+      max={1}
+      step={0.05}
+      value={value}
+      disabled={disabled}
+      aria-label={label}
+      onChange={(event) => onChange(Number(event.target.value))}
+      // Preview the new level once the slider is released.
+      onPointerUp={() => audio.play("uiClick")}
+      className="w-40 disabled:opacity-40"
+    />
+  );
+}
+
+export function SettingsScreen() {
+  const settings = useSettingsStore();
+  const totalProducts = usePlayerStore((s) => s.totalProductsCompleted);
+  const totalPerfects = usePlayerStore((s) => s.totalPerfects);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const { audio: sound } = settings;
+
+  return (
+    <ScreenFrame title="Settings">
+      <h3 className="text-xs font-black tracking-widest text-muted uppercase">Sound</h3>
+      <Row label="Sound">
+        <Toggle
+          label="Sound"
+          checked={sound.masterEnabled}
+          onChange={(masterEnabled) => {
+            if (masterEnabled) audio.unlock();
+            settings.setAudio({ masterEnabled });
+          }}
+        />
+      </Row>
+      <Row label="Master volume">
+        <Volume label="Master volume" value={sound.masterVolume} disabled={!sound.masterEnabled} onChange={(masterVolume) => settings.setAudio({ masterVolume })} />
+      </Row>
+      <Row label="Sound effects">
+        <div className="flex items-center gap-2">
+          <Volume label="Sound effects volume" value={sound.sfxVolume} disabled={!sound.masterEnabled || !sound.sfxEnabled} onChange={(sfxVolume) => settings.setAudio({ sfxVolume })} />
+          <Toggle label="Sound effects" checked={sound.sfxEnabled} onChange={(sfxEnabled) => settings.setAudio({ sfxEnabled })} />
+        </div>
+      </Row>
+      <Row label="Factory ambience" hint="A quiet background hum.">
+        <div className="flex items-center gap-2">
+          <Volume label="Ambience volume" value={sound.musicVolume} disabled={!sound.masterEnabled || !sound.musicEnabled} onChange={(musicVolume) => settings.setAudio({ musicVolume })} />
+          <Toggle
+            label="Factory ambience"
+            checked={sound.musicEnabled}
+            onChange={(musicEnabled) => {
+              if (musicEnabled) audio.unlock();
+              settings.setAudio({ musicEnabled });
+            }}
+          />
+        </div>
+      </Row>
+
+      <h3 className="mt-6 text-xs font-black tracking-widest text-muted uppercase">Display</h3>
+      <Row label="Appearance" hint="Menus and panels. Factory themes are separate.">
+        <Segmented<ThemeMode>
+          label="Appearance"
+          value={settings.themeMode}
+          onChange={settings.setThemeMode}
+          options={[
+            { value: "light", label: "Light", icon: "sun" },
+            { value: "dark", label: "Dark", icon: "moon" },
+            { value: "system", label: "System" },
+          ]}
+        />
+      </Row>
+      <Row label="Reduced motion" hint="Fewer particles, fades instead of slides.">
+        <Toggle label="Reduced motion" checked={settings.reducedMotion} onChange={settings.setReducedMotion} />
+      </Row>
+      <Row label="Particles">
+        <Segmented<ParticleDensity>
+          label="Particle density"
+          value={settings.particleDensity}
+          onChange={settings.setParticleDensity}
+          options={[
+            { value: "low", label: "Low" },
+            { value: "medium", label: "Medium" },
+            { value: "high", label: "High" },
+          ]}
+        />
+      </Row>
+
+      <h3 className="mt-6 text-xs font-black tracking-widest text-muted uppercase">Factory</h3>
+      <Row label="Products completed">
+        <span className="font-black tabular-nums">{totalProducts.toLocaleString("en-US")}</span>
+      </Row>
+      <Row label="Perfect results">
+        <span className="font-black tabular-nums">{totalPerfects.toLocaleString("en-US")}</span>
+      </Row>
+      <Row label="Reset progress" hint="Erases coins, levels, upgrades and settings on this device.">
+        {confirmingReset ? (
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setConfirmingReset(false)}>
+              Keep
+            </Button>
+            <Button
+              variant="secondary"
+              className="!bg-red-600"
+              onClick={() => {
+                setConfirmingReset(false);
+                resetGame();
+              }}
+            >
+              Erase everything
+            </Button>
+          </div>
+        ) : (
+          <Button variant="ghost" onClick={() => setConfirmingReset(true)}>
+            Reset
+          </Button>
+        )}
+      </Row>
+
+      {process.env.NODE_ENV === "development" && <DebugPanel />}
+    </ScreenFrame>
+  );
+}
