@@ -8,7 +8,8 @@ import {
   getStreakMultiplier,
   nextStreak,
 } from "@/game/economy/multipliers";
-import type { MachineResult, ProductDefinition, UpgradeId } from "@/types/game";
+import type { MachineResult, OrderTwist, ProductDefinition, UpgradeId } from "@/types/game";
+import { parTimeMs, resolveTwist } from "./orders";
 
 /** Simple average of the machine scores (MVP has no per-machine weights). */
 export function calculateProductQuality(results: Pick<MachineResult, "quality">[]): number {
@@ -38,6 +39,7 @@ export interface ProductRewardInput {
   streak: number;
   upgradeLevels: Record<UpgradeId, number>;
   isGolden: boolean;
+  twist?: OrderTwist;
 }
 
 export interface ProductReward {
@@ -48,23 +50,38 @@ export interface ProductReward {
   /** XP the machines of this run already paid, for the summary only. */
   machineXp: number;
   streakBonus: number;
+  /** The order's twist and whether its condition was met. */
+  twist?: { kind: OrderTwist; achieved: boolean };
 }
 
 /** Pure: turns a finished run into its payout. Applying it is the caller's job. */
 export function resolveProductReward(input: ProductRewardInput): ProductReward {
   const quality = calculateProductQuality(input.results);
+  const twist = resolveTwist(input.twist, {
+    quality,
+    // Only time spent working the machines counts, never the pauses between them.
+    activeMs: input.results.reduce((total, r) => total + r.durationMs, 0),
+    parMs: parTimeMs(input.results.map((r) => r.machineId)),
+  });
+
+  const coins = calculateCoins({
+    baseValue: input.product.baseValue,
+    quality,
+    streak: input.streak,
+    upgradeLevels: input.upgradeLevels,
+    isGolden: input.isGolden,
+  });
+  const machineXp = input.results.reduce((total, r) => total + calculateMachineXp(r.quality), 0);
+  const completionXp = calculateCompletionXp(input.results.length, input.isGolden);
+
   return {
     quality,
-    coins: calculateCoins({
-      baseValue: input.product.baseValue,
-      quality,
-      streak: input.streak,
-      upgradeLevels: input.upgradeLevels,
-      isGolden: input.isGolden,
-    }),
-    completionXp: calculateCompletionXp(input.results.length, input.isGolden),
-    machineXp: input.results.reduce((total, r) => total + calculateMachineXp(r.quality), 0),
+    coins: Math.round(coins * twist.coinMultiplier),
+    // An XP twist covers the whole order; the machines' share was already paid, so it is added here.
+    completionXp: completionXp + Math.round((machineXp + completionXp) * (twist.xpMultiplier - 1)),
+    machineXp,
     streakBonus: getStreakBonus(input.streak),
+    twist: input.twist ? { kind: input.twist, achieved: twist.achieved } : undefined,
   };
 }
 
@@ -73,7 +90,9 @@ export function resolveProductReward(input: ProductRewardInput): ProductReward {
  * the order's value before quality; with every result in, it is the payout.
  */
 export function projectOrderValue(input: ProductRewardInput): number {
-  if (input.results.length > 0) return resolveProductReward(input).coins;
+  // A Rush bonus cannot be known until the order is finished, so it is left out of the projection.
+  const twist = input.twist === "rush" ? undefined : input.twist;
+  if (input.results.length > 0) return resolveProductReward({ ...input, twist }).coins;
   return Math.round(
     input.product.baseValue *
       getStreakMultiplier(input.streak) *

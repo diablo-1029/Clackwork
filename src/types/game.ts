@@ -143,6 +143,19 @@ export interface ThemeDefinition {
   vars: Record<string, string>;
 }
 
+/** A condition attached to an order that changes what it pays. */
+export type OrderTwist = "rush" | "precision" | "training";
+
+/** One card on the order board. */
+export interface OrderOffer {
+  id: string;
+  productId: ProductId;
+  isGolden: boolean;
+  twist?: OrderTwist;
+  /** The product was unlocked this level and has not been made yet. */
+  isNew?: boolean;
+}
+
 export type RunPhase =
   | "ORDER_INTRO"
   | "MACHINE_ENTER"
@@ -165,6 +178,7 @@ export interface ProductionRun {
   status: "intro" | "machine" | "resolving" | "complete";
   /** Set exactly once, when the product reward has been paid out. */
   rewardCommitted: boolean;
+  twist?: OrderTwist;
 }
 
 export type QualityTier = "perfect" | "excellent" | "good" | "low";
@@ -177,4 +191,6 @@ export interface RewardSummary {
   coins: number;
   xp: number;
   streakBonus: number;
+  /** The order's twist and whether its condition was met. */
+  twist?: { kind: OrderTwist; achieved: boolean };
 }

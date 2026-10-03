@@ -41,7 +41,8 @@ describe("unlocks", () => {
   it("unlocks the Stamper and Soap Bar at level 3", () => {
     expect(machinesUnlockedAt(3)).toContain("stamper");
     expect(productsUnlockedAt(3)).toContain("soapBar");
-    expect(getUnlocksAtLevel(3).map((u) => u.id).sort()).toEqual(["soapBar", "stamper"]);
+    // The order board arrives with the second product, when there is first something to choose.
+    expect(getUnlocksAtLevel(3).map((u) => u.id).sort()).toEqual(["orderBoard", "soapBar", "stamper"]);
   });
 
   it("unlocks the Polisher and Golden Touch at level 5", () => {

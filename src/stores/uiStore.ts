@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ProductId } from "@/types/game";
+import type { OrderOffer, ProductId } from "@/types/game";
 
 export type Screen = "factory" | "products" | "upgrades" | "themes" | "settings";
 
@@ -13,6 +13,8 @@ interface UiState {
   pendingLevelUps: number[];
   /** Newly unlocked products that should arrive as the very next orders. */
   queuedProducts: ProductId[];
+  /** The cards currently on the order board. Kept until one is picked, so they never reshuffle. */
+  offers: OrderOffer[];
   toast: { id: number; message: string } | null;
   debug: {
     goldenNext: boolean;
@@ -29,6 +31,7 @@ interface UiState {
   clearLevelUps: () => void;
   queueProducts: (ids: ProductId[]) => void;
   shiftQueuedProduct: () => ProductId | undefined;
+  setOffers: (offers: OrderOffer[]) => void;
   showToast: (message: string) => void;
   clearToast: (id: number) => void;
   setDebug: (patch: Partial<UiState["debug"]>) => void;
@@ -43,6 +46,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   screen: "factory",
   pendingLevelUps: [],
   queuedProducts: [],
+  offers: [],
   toast: null,
   debug: { goldenNext: false, qualityOverride: null, stressBursts: 0, variantIndex: null },
 
@@ -57,6 +61,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
     if (next) set({ queuedProducts: rest });
     return next;
   },
+  setOffers: (offers) => set({ offers }),
   showToast: (message) => set({ toast: { id: ++toastId, message } }),
   clearToast: (id) => set((s) => (s.toast?.id === id ? { toast: null } : s)),
   setDebug: (patch) => set((s) => ({ debug: { ...s.debug, ...patch } })),
@@ -66,6 +71,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
       screen: "factory",
       pendingLevelUps: [],
       queuedProducts: [],
+      offers: [],
       debug: { goldenNext: false, qualityOverride: null, stressBursts: 0, variantIndex: null },
     }),
 }));

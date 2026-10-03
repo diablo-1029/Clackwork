@@ -7,8 +7,9 @@ import { usePlayerStore } from "@/stores/playerStore";
 import { useProgressionStore } from "@/stores/progressionStore";
 import { useRunStore } from "@/stores/runStore";
 import { useUiStore } from "@/stores/uiStore";
-import type { ProductionRun, RewardSummary } from "@/types/game";
-import { pickProduct, rollGolden } from "./orders";
+import { isFeatureUnlocked } from "@/game/progression/unlocks";
+import type { OrderOffer, OrderTwist, ProductionRun, RewardSummary } from "@/types/game";
+import { generateOffers, pickProduct, rollGolden } from "./orders";
 import { resolveMachineReward, resolveProductReward } from "./RewardResolver";
 
 /**
@@ -40,8 +41,49 @@ export function grantXp(amount: number): void {
   devLog("Progression", `reached level ${level}`);
 }
 
-/** Starts the next order. A run that is still in progress is never replaced. */
-export function createOrder(): ProductionRun | null {
+/** Whether the player chooses orders from the board yet. */
+export function isOrderBoardUnlocked(): boolean {
+  return isFeatureUnlocked("orderBoard", usePlayerStore.getState().factoryLevel);
+}
+
+/**
+ * The cards on the order board, dealing a fresh set only when there is none.
+ * A newly unlocked product (or a debug choice) is always the first card.
+ */
+export function ensureOffers(): OrderOffer[] {
+  const ui = useUiStore.getState();
+  if (ui.offers.length > 0) return ui.offers;
+
+  const progression = useProgressionStore.getState();
+  const player = usePlayerStore.getState();
+
+  // One scripted Golden card teaches the event; afterwards Golden is chance-based.
+  const introduceGolden =
+    !progression.onboarding.hasSeenGoldenIntro && player.factoryLevel >= pacing.goldenIntroLevel;
+  const goldenFirst = ui.debug.goldenNext || introduceGolden;
+  if (ui.debug.goldenNext) ui.setDebug({ goldenNext: false });
+  if (introduceGolden) progression.setOnboarding("hasSeenGoldenIntro");
+
+  const forced = ui.queuedProducts;
+  if (forced.length > 0) useUiStore.setState({ queuedProducts: [] });
+
+  const offers = generateOffers({
+    unlocked: progression.products,
+    level: player.factoryLevel,
+    goldenTouchLevel: progression.upgrades.goldenTouch,
+    productsCompleted: player.totalProductsCompleted,
+    forced,
+    goldenFirst,
+  });
+  ui.setOffers(offers);
+  return offers;
+}
+
+/**
+ * Starts the next order: the chosen card if there is one, otherwise an order
+ * picked for the player. A run that is still in progress is never replaced.
+ */
+export function createOrder(offer?: OrderOffer): ProductionRun | null {
   const runStore = useRunStore.getState();
   if (runStore.run && runStore.phase !== "REWARD_SUMMARY") return null;
 
@@ -49,12 +91,22 @@ export function createOrder(): ProductionRun | null {
   const progression = useProgressionStore.getState();
   const player = usePlayerStore.getState();
 
-  const queued = ui.shiftQueuedProduct();
-  const productId = queued && products[queued] ? queued : pickProduct(progression.products);
-  const product = products[productId] ?? products.woodBlock;
+  let twist: OrderTwist | undefined;
+  let productId = offer?.productId;
+  if (offer) {
+    twist = offer.twist;
+    // The board is spent: the next one is dealt fresh.
+    ui.setOffers([]);
+  } else {
+    const queued = ui.shiftQueuedProduct();
+    productId = queued && products[queued] ? queued : pickProduct(progression.products);
+  }
+  const product = (productId && products[productId]) || products.woodBlock;
 
   let isGolden: boolean;
-  if (ui.debug.goldenNext) {
+  if (offer) {
+    isGolden = offer.isGolden;
+  } else if (ui.debug.goldenNext) {
     isGolden = true;
     ui.setDebug({ goldenNext: false });
   } else if (
@@ -78,6 +130,7 @@ export function createOrder(): ProductionRun | null {
     startedAt: Date.now(),
     status: "intro",
     rewardCommitted: false,
+    twist,
   };
 
   runStore.startRun(run);
@@ -157,6 +210,7 @@ export function finishProduct(): RewardSummary | null {
     streak: player.perfectStreak,
     upgradeLevels: useProgressionStore.getState().upgrades,
     isGolden: run.isGolden,
+    twist: run.twist,
   });
 
   player.addCoins(reward.coins);
@@ -171,6 +225,7 @@ export function finishProduct(): RewardSummary | null {
     coins: reward.coins,
     xp: reward.machineXp + reward.completionXp,
     streakBonus: reward.streakBonus,
+    twist: reward.twist,
   };
 
   runStore.setLastReward(summary);

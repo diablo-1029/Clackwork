@@ -41,3 +41,22 @@ export const economy = {
     exponent: 1.35,
   },
 } as const;
+
+/** The board the player picks orders from once it unlocks (see featureUnlocks). */
+export const orderBoard = {
+  offerCount: 3,
+  /** Share of cards that carry a twist. */
+  twistChance: 0.35,
+  twistMinLevel: 4,
+  /** No twists until the player has finished this many products. */
+  graceOrders: 3,
+} as const;
+
+/** First guesses, to be tuned by play. */
+export const orderTwists = {
+  /** Bonus for finishing under par. Missing par costs nothing. */
+  rush: { coinBonus: 0.4, parFactor: 0.8 },
+  /** A bigger payout for a clean product, a slightly smaller one otherwise. */
+  precision: { minQuality: 95, coinBonus: 0.6, coinPenalty: 0.15 },
+  training: { xpBonus: 0.5 },
+} as const;

@@ -6,9 +6,16 @@ import { usePlayerStore } from "@/stores/playerStore";
 import { useProgressionStore } from "@/stores/progressionStore";
 import { useRunStore } from "@/stores/runStore";
 import { useUiStore } from "@/stores/uiStore";
-import { pickProduct, rollGolden } from "./orders";
+import { generateOffers, parTimeMs, pickProduct, resolveTwist, rollGolden } from "./orders";
 import { calculateProductQuality, projectOrderValue, resolveProductReward } from "./RewardResolver";
-import { completeMachine, createOrder, exitMachine, finishProduct } from "./runActions";
+import {
+  completeMachine,
+  createOrder,
+  ensureOffers,
+  exitMachine,
+  finishProduct,
+  isOrderBoardUnlocked,
+} from "./runActions";
 import { transition } from "./runStateMachine";
 
 const run = () => useRunStore.getState();
@@ -348,6 +355,184 @@ describe("toy robot", () => {
     expect(summary).toMatchObject({ productId: "toyRobot", quality: 100, coins: 129 });
     expect(finishProduct()).toBeNull();
     expect(player().coins).toBe(129);
+  });
+});
+
+describe("order board", () => {
+  /** A repeatable stand-in for Math.random. */
+  const sequence = (values: number[]) => {
+    let i = 0;
+    return () => values[i++ % values.length];
+  };
+  const all = ["woodBlock", "soapBar", "ceramicCoaster", "crystal", "toyRobot", "goldIngot"] as const;
+  const base = { unlocked: [...all], level: 15, goldenTouchLevel: 0, productsCompleted: 50 };
+
+  it("unlocks at level 3", () => {
+    expect(isOrderBoardUnlocked()).toBe(false);
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 3 });
+    expect(isOrderBoardUnlocked()).toBe(true);
+  });
+
+  it("deals three different products when there are enough", () => {
+    for (let i = 0; i < 100; i++) {
+      const offers = generateOffers(base);
+      expect(offers).toHaveLength(3);
+      expect(new Set(offers.map((o) => o.productId)).size).toBe(3);
+      expect(new Set(offers.map((o) => o.id)).size).toBe(3);
+    }
+  });
+
+  it("only deals unlocked products, repeating them when there are fewer than three", () => {
+    const offers = generateOffers({ ...base, unlocked: ["woodBlock", "soapBar"], level: 3 });
+    expect(offers).toHaveLength(3);
+    expect(offers.every((o) => o.productId === "woodBlock" || o.productId === "soapBar")).toBe(true);
+    expect(new Set(offers.map((o) => o.productId)).size).toBe(2);
+  });
+
+  it("shows newer products far more often than the old weights did", () => {
+    let gold = 0;
+    for (let i = 0; i < 400; i++) if (generateOffers(base).some((o) => o.productId === "goldIngot")) gold++;
+    // Gold Ingot was about 8% of single orders; it should now be on well over a third of boards.
+    expect(gold / 400).toBeGreaterThan(0.35);
+  });
+
+  it("puts a forced product first, tagged new only if it unlocked this level", () => {
+    const fresh = generateOffers({ ...base, level: 12, forced: ["toyRobot"] });
+    expect(fresh[0]).toMatchObject({ productId: "toyRobot", isNew: true });
+    expect(fresh[0].twist).toBeUndefined();
+    expect(fresh.filter((o) => o.productId === "toyRobot")).toHaveLength(1);
+
+    const chosen = generateOffers({ ...base, level: 15, forced: ["woodBlock"] });
+    expect(chosen[0]).toMatchObject({ productId: "woodBlock", isNew: false });
+  });
+
+  it("never attaches a twist before level 4 or during the first few orders", () => {
+    const always = () => 0.01;
+    expect(generateOffers({ ...base, level: 3, random: always }).every((o) => !o.twist)).toBe(true);
+    expect(generateOffers({ ...base, productsCompleted: 2, random: always }).every((o) => !o.twist)).toBe(true);
+    expect(generateOffers({ ...base, random: always }).some((o) => o.twist)).toBe(true);
+  });
+
+  it("makes the first card Golden when asked, and otherwise rolls each card", () => {
+    expect(generateOffers({ ...base, goldenFirst: true })[0].isGolden).toBe(true);
+    expect(generateOffers(base).every((o) => !o.isGolden)).toBe(true);
+    const lucky = generateOffers({ ...base, goldenTouchLevel: 5, random: sequence([0.01]) });
+    expect(lucky.every((o) => o.isGolden)).toBe(true);
+  });
+
+  it("keeps the same cards until one is picked", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 5 });
+    useProgressionStore.getState().syncUnlocks(5);
+    const first = ensureOffers();
+    expect(ensureOffers()).toBe(first);
+    // The scripted Golden introduction is the first card, once.
+    expect(first[0].isGolden).toBe(true);
+    expect(useProgressionStore.getState().onboarding.hasSeenGoldenIntro).toBe(true);
+
+    const order = createOrder(first[1]);
+    expect(order).toMatchObject({ productId: first[1].productId, isGolden: first[1].isGolden });
+    expect(useUiStore.getState().offers).toEqual([]);
+    expect(ensureOffers()).not.toBe(first);
+  });
+
+  it("ignores a second pick while an order is in progress", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 5 });
+    useProgressionStore.getState().syncUnlocks(5);
+    const [a, b] = ensureOffers();
+    const started = createOrder(a);
+    expect(createOrder(b)).toBeNull();
+    expect(run().run?.id).toBe(started?.id);
+  });
+});
+
+describe("order twists", () => {
+  it("pays a Rush bonus under par and nothing extra over it", () => {
+    expect(resolveTwist("rush", { quality: 80, activeMs: 5000, parMs: 6000 })).toEqual({
+      coinMultiplier: 1.4,
+      xpMultiplier: 1,
+      achieved: true,
+    });
+    expect(resolveTwist("rush", { quality: 80, activeMs: 7000, parMs: 6000 })).toMatchObject({
+      coinMultiplier: 1,
+      achieved: false,
+    });
+  });
+
+  it("pays Precision more for a clean product and a little less otherwise", () => {
+    expect(resolveTwist("precision", { quality: 95, activeMs: 0, parMs: 0 }).coinMultiplier).toBe(1.6);
+    expect(resolveTwist("precision", { quality: 94, activeMs: 0, parMs: 0 })).toMatchObject({
+      coinMultiplier: 0.85,
+      achieved: false,
+    });
+  });
+
+  it("adds XP for Training and changes nothing without a twist", () => {
+    expect(resolveTwist("training", { quality: 50, activeMs: 0, parMs: 0 })).toEqual({
+      coinMultiplier: 1,
+      xpMultiplier: 1.5,
+      achieved: true,
+    });
+    expect(resolveTwist(undefined, { quality: 50, activeMs: 0, parMs: 0 })).toEqual({
+      coinMultiplier: 1,
+      xpMultiplier: 1,
+      achieved: true,
+    });
+  });
+
+  it("sets par from the chain's machines", () => {
+    // Cutter 4 s + Packager 4 s, times the par factor of 0.8.
+    expect(parTimeMs(["cutter", "packager"])).toBe(6400);
+    expect(parTimeMs(["cutter", "stamper", "polisher", "packager"])).toBeGreaterThan(parTimeMs(["cutter", "packager"]));
+  });
+
+  const playOrder = (twist: "rush" | "precision" | "training", quality: number) => {
+    const order = createOrder({ id: "t", productId: "woodBlock", isGolden: false, twist });
+    run().dispatch("INTRO_DONE");
+    order!.machineSequence.forEach(() => playMachine(quality));
+    return finishProduct()!;
+  };
+
+  it("applies a twist to the payout, once, and reports the outcome", () => {
+    // playMachine reports 1.2 s per machine: 2.4 s, well under the 6.4 s par.
+    const rush = playOrder("rush", 75);
+    expect(rush).toMatchObject({ coins: 14, twist: { kind: "rush", achieved: true } });
+    expect(player().coins).toBe(14);
+    expect(finishProduct()).toBeNull();
+    expect(player().coins).toBe(14);
+  });
+
+  it("pays Precision either way, depending on quality", () => {
+    expect(playOrder("precision", 75)).toMatchObject({ coins: 9, twist: { kind: "precision", achieved: false } });
+    useRunStore.getState().clear();
+    // 10 x 1.30 (Perfect) x 1.6 = 20.8, on top of a short streak bonus of nothing yet.
+    expect(playOrder("precision", 100)).toMatchObject({ coins: 21, twist: { kind: "precision", achieved: true } });
+  });
+
+  it("adds half again to the order's XP for Training", () => {
+    const plain = (() => {
+      createOrder({ id: "p", productId: "woodBlock", isGolden: false });
+      run().dispatch("INTRO_DONE");
+      playMachine(75);
+      playMachine(75);
+      return finishProduct()!;
+    })();
+    useRunStore.getState().clear();
+    const trained = playOrder("training", 75);
+    expect(trained.coins).toBe(plain.coins);
+    expect(trained.xp).toBe(Math.round(plain.xp * 1.5));
+  });
+
+  it("projects the value without the Rush bonus until the order is finished", () => {
+    const input = {
+      product: products.woodBlock,
+      results: [{ machineId: "cutter" as const, productId: "woodBlock" as const, quality: 75, isPerfect: false, durationMs: 1000 }],
+      streak: 0,
+      upgradeLevels: { betterMaterials: 0, goldenTouch: 0 },
+      isGolden: false,
+    };
+    expect(projectOrderValue({ ...input, twist: "rush" })).toBe(10);
+    expect(projectOrderValue({ ...input, twist: "precision" })).toBe(9);
+    expect(resolveProductReward({ ...input, twist: "rush" }).coins).toBe(14);
   });
 });
 

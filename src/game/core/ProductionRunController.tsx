@@ -6,6 +6,7 @@ import { audio } from "@/audio/audioManager";
 import { OrderValueChip } from "@/components/counters/OrderValueChip";
 import { ResultFeedback } from "@/components/feedback/ResultFeedback";
 import { LevelUpOverlay } from "@/components/overlays/LevelUpOverlay";
+import { OrderBoard } from "@/components/overlays/OrderBoard";
 import { OrderIntro } from "@/components/overlays/OrderIntro";
 import { RewardSummaryCard } from "@/components/overlays/RewardSummaryCard";
 import { Icon } from "@/components/ui/Icon";
@@ -24,8 +25,11 @@ import { useUiStore } from "@/stores/uiStore";
 import type { QualityTier, SoundKey } from "@/types/game";
 import { MachineStage } from "./MachineStage";
 import { ProductionProgress } from "./ProductionProgress";
+import { isFeatureUnlocked } from "@/game/progression/unlocks";
+import type { OrderOffer } from "@/types/game";
+import { describeTwist } from "./orders";
 import { projectOrderValue } from "./RewardResolver";
-import { completeMachine, createOrder, exitMachine, finishProduct } from "./runActions";
+import { completeMachine, createOrder, ensureOffers, exitMachine, finishProduct, isOrderBoardUnlocked } from "./runActions";
 import { MACHINE_PHASES } from "./runStateMachine";
 
 const tierSound: Record<QualityTier, SoundKey | null> = {
@@ -51,6 +55,7 @@ export function ProductionRunController() {
   const clearLevelUps = useUiStore((s) => s.clearLevelUps);
   const showToast = useUiStore((s) => s.showToast);
   const forcedVariant = useUiStore((s) => s.debug.variantIndex);
+  const offers = useUiStore((s) => s.offers);
 
   const productsCompleted = usePlayerStore((s) => s.totalProductsCompleted);
   const factoryLevel = usePlayerStore((s) => s.factoryLevel);
@@ -61,6 +66,10 @@ export function ProductionRunController() {
   const streak = usePlayerStore((s) => s.perfectStreak);
 
   const [celebrating, setCelebrating] = useState(false);
+  /** The run whose summary has been dismissed, leaving only the order board on screen. */
+  const [boardOnlyFor, setBoardOnlyFor] = useState<string | null>(null);
+  // Once unlocked, the player picks each order from the board instead of being handed one.
+  const boardUnlocked = isFeatureUnlocked("orderBoard", factoryLevel);
 
   // What earlier machines did to the product. The active machine's own result is
   // left out: it animates that change itself.
@@ -68,10 +77,19 @@ export function ProductionRunController() {
   const activeIndex = run?.currentMachineIndex ?? 0;
   const look = useMemo(() => deriveProductLook((results ?? []).slice(0, activeIndex)), [results, activeIndex]);
 
-  // There is always an order on the floor.
+  const runId = run?.id;
+
+  // Before the board unlocks there is always an order on the floor.
   useEffect(() => {
-    if (!run) createOrder();
-  }, [run]);
+    if (!run && !boardUnlocked) createOrder();
+  }, [run, boardUnlocked]);
+
+  // With the board, deal cards whenever an order is needed. Level-ups are
+  // celebrated first, so a product unlocked just now can be on the board.
+  const awaitingChoice = !run || phase === "REWARD_SUMMARY";
+  useEffect(() => {
+    if (boardUnlocked && awaitingChoice && !celebrating && pendingLevelUps.length === 0) ensureOffers();
+  }, [boardUnlocked, awaitingChoice, celebrating, pendingLevelUps.length, runId]);
 
   /** Leaves the reward summary: celebrate pending level-ups first, then the next order. */
   const advance = useCallback(() => {
@@ -81,16 +99,21 @@ export function ProductionRunController() {
       audio.play("levelUp");
       return;
     }
-    createOrder();
+    // With the board unlocked, the next order starts when a card is picked.
+    if (!isOrderBoardUnlocked()) createOrder();
   }, []);
 
   const continueAfterLevelUp = () => {
     clearLevelUps();
     setCelebrating(false);
-    createOrder();
+    if (isOrderBoardUnlocked()) setBoardOnlyFor(useRunStore.getState().run?.id ?? null);
+    else createOrder();
   };
 
-  const runId = run?.id;
+  const pickOffer = (offer: OrderOffer) => {
+    createOrder(offer);
+  };
+
   const machineIndex = run?.currentMachineIndex;
   const isGolden = run?.isGolden ?? false;
   const autoAdvance = productsCompleted > pacing.autoAdvanceAfterProducts;
@@ -107,6 +130,8 @@ export function ProductionRunController() {
 
     switch (phase) {
       case "ORDER_INTRO":
+        // An order picked from the board needs no introduction.
+        if (boardUnlocked) return after(0, () => dispatch("INTRO_DONE"));
         return after(firstOrder || isGolden ? pacing.orderIntroFirstMs : pacing.orderIntroMs, () =>
           dispatch("INTRO_DONE"),
         );
@@ -122,17 +147,39 @@ export function ProductionRunController() {
         finishProduct();
         return;
       case "REWARD_SUMMARY":
-        if (autoAdvance && !celebrating) return after(pacing.rewardSummaryMs, advance);
+        // Choosing a card needs a tap, so nothing advances by itself once the board is unlocked.
+        if (autoAdvance && !celebrating && !boardUnlocked) return after(pacing.rewardSummaryMs, advance);
         return;
     }
-  }, [runId, machineIndex, phase, firstOrder, isGolden, autoAdvance, celebrating, dispatch, advance]);
+  }, [runId, machineIndex, phase, firstOrder, isGolden, autoAdvance, celebrating, boardUnlocked, dispatch, advance]);
 
   // A Golden order announces itself.
   useEffect(() => {
     if (runId && isGolden) audio.play("golden");
   }, [runId, isGolden]);
 
-  if (!run || !phase) return null;
+  const boardPanel = (
+    <div className="absolute inset-0 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="w-full max-w-md rounded-3xl bg-surface p-5 text-ink shadow-xl"
+      >
+        <OrderBoard offers={offers} onPick={pickOffer} />
+      </motion.div>
+    </div>
+  );
+
+  if (!run || !phase) {
+    // No order yet this session: with the board unlocked, the player picks the first one.
+    if (!boardUnlocked) return null;
+    return (
+      <div className="sf-stage relative h-full overflow-hidden rounded-3xl">
+        <div className="sf-belt absolute inset-x-0 bottom-0 h-3" aria-hidden />
+        {boardPanel}
+      </div>
+    );
+  }
 
   const product = products[run.productId] ?? products.woodBlock;
   const machineId = run.machineSequence[run.currentMachineIndex];
@@ -146,7 +193,15 @@ export function ProductionRunController() {
   const orderValue =
     phase === "REWARD_SUMMARY" && lastReward?.runId === run.id
       ? lastReward.coins
-      : projectOrderValue({ product, results: run.results, streak, upgradeLevels, isGolden: run.isGolden });
+      : projectOrderValue({
+          product,
+          results: run.results,
+          streak,
+          upgradeLevels,
+          isGolden: run.isGolden,
+          twist: run.twist,
+        });
+  const levelUpsPending = pendingLevelUps.length > 0;
 
   const handleComplete = (completion: MachineCompletion) => {
     if (!completeMachine(completion)) return;
@@ -196,6 +251,11 @@ export function ProductionRunController() {
           )}
           <h2 className="text-base font-black tracking-widest text-stage-ink uppercase sm:text-lg">{product.name}</h2>
           {phase !== "ORDER_INTRO" && <OrderValueChip value={orderValue} />}
+          {run.twist && (
+            <span className="rounded-full bg-orange px-2 py-0.5 text-xs font-black text-navy uppercase" title={describeTwist(run.twist).rule}>
+              {describeTwist(run.twist).name}
+            </span>
+          )}
         </div>
 
         <div className="sf-machine-slot absolute inset-x-2 top-11 bottom-[4.75rem] flex items-center justify-center sm:inset-x-4 lg:bottom-[4.25rem]">
@@ -248,11 +308,24 @@ export function ProductionRunController() {
           )}
         </div>
 
-        {phase === "ORDER_INTRO" && <OrderIntro run={run} onSkip={() => dispatch("INTRO_DONE")} />}
+        {phase === "ORDER_INTRO" && !boardUnlocked && <OrderIntro run={run} onSkip={() => dispatch("INTRO_DONE")} />}
 
-        {phase === "REWARD_SUMMARY" && lastReward && !celebrating && (
-          <RewardSummaryCard key={lastReward.runId} reward={lastReward} onNext={advance} />
-        )}
+        {phase === "REWARD_SUMMARY" &&
+          lastReward &&
+          !celebrating &&
+          (boardOnlyFor === run.id ? (
+            boardPanel
+          ) : (
+            <RewardSummaryCard
+              key={lastReward.runId}
+              reward={lastReward}
+              onNext={advance}
+              nextLabel={levelUpsPending ? "Continue" : "Next Order"}
+              // Level-ups are celebrated before the cards appear.
+              offers={boardUnlocked && !levelUpsPending ? offers : undefined}
+              onPick={pickOffer}
+            />
+          ))}
 
         {celebrating && <LevelUpOverlay levels={pendingLevelUps} onContinue={continueAfterLevelUp} />}
       </div>

@@ -14,12 +14,32 @@ import { finishedLook } from "@/game/products/productLook";
 import { ProductIcon } from "@/game/products/ProductRenderer";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useSettingsStore } from "@/stores/settingsStore";
-import type { RewardSummary } from "@/types/game";
+import type { OrderOffer, RewardSummary } from "@/types/game";
+import { describeTwist } from "@/game/core/orders";
+import { OrderBoard } from "./OrderBoard";
 
 /** A handful of tokens, never one element per coin. */
 const COIN_TOKENS = 5;
 
-export function RewardSummaryCard({ reward, onNext }: { reward: RewardSummary; onNext: () => void }) {
+interface RewardSummaryCardProps {
+  reward: RewardSummary;
+  onNext: () => void;
+  /** Label for the button shown when there are no cards to pick from. */
+  nextLabel?: string;
+  /** When given, the cards replace the button: picking one starts the next order. */
+  offers?: OrderOffer[];
+  onPick?: (offer: OrderOffer) => void;
+}
+
+/** What the twist did to this order, in a few words. */
+function twistOutcome(twist: NonNullable<RewardSummary["twist"]>): string {
+  const { name, rule } = describeTwist(twist.kind);
+  if (twist.kind === "training") return `${name}: ${rule}`;
+  if (twist.kind === "rush") return twist.achieved ? `${name} bonus earned` : `${name} missed, no penalty`;
+  return twist.achieved ? `${name} bonus earned` : `${name} missed`;
+}
+
+export function RewardSummaryCard({ reward, onNext, nextLabel = "Next Order", offers, onPick }: RewardSummaryCardProps) {
   const product = products[reward.productId];
   const level = usePlayerStore((s) => s.factoryLevel);
   const xp = usePlayerStore((s) => s.xp);
@@ -55,7 +75,9 @@ export function RewardSummaryCard({ reward, onNext }: { reward: RewardSummary; o
         initial={{ scale: 0.85, opacity: 0, y: 14 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 420, damping: 24 }}
-        className={`relative flex w-full max-w-sm flex-col items-center gap-2 rounded-3xl bg-surface p-5 text-ink shadow-xl sm:p-6 ${
+        className={`relative flex max-h-full w-full flex-col items-center gap-2 overflow-y-auto rounded-3xl bg-surface p-5 text-ink shadow-xl sm:p-6 ${
+          offers ? "max-w-md" : "max-w-sm"
+        } ${
           reward.isGolden ? "ring-4 ring-gold" : ""
         }`}
         role="status"
@@ -101,9 +123,21 @@ export function RewardSummaryCard({ reward, onNext }: { reward: RewardSummary; o
           </p>
         )}
 
-        <Button onClick={onNext} className="mt-1 w-full">
-          Next Order
-        </Button>
+        {reward.twist && (
+          <p className={`text-center text-xs font-extrabold ${reward.twist.achieved ? "text-orange" : "text-muted"}`}>
+            {twistOutcome(reward.twist)}
+          </p>
+        )}
+
+        {offers && onPick ? (
+          <div className="mt-2 w-full border-t border-line pt-3">
+            <OrderBoard offers={offers} onPick={onPick} />
+          </div>
+        ) : (
+          <Button onClick={onNext} className="mt-1 w-full">
+            {nextLabel}
+          </Button>
+        )}
       </motion.div>
     </div>
   );
