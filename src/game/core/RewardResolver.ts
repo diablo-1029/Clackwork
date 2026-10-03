@@ -1,6 +1,13 @@
 import { calculateCoins } from "@/game/economy/calculateCoins";
 import { calculateCompletionXp, calculateMachineXp } from "@/game/economy/calculateXp";
-import { clampQuality, getStreakBonus, nextStreak } from "@/game/economy/multipliers";
+import {
+  clampQuality,
+  getGoldenMultiplier,
+  getProductValueMultiplier,
+  getStreakBonus,
+  getStreakMultiplier,
+  nextStreak,
+} from "@/game/economy/multipliers";
 import type { MachineResult, ProductDefinition, UpgradeId } from "@/types/game";
 
 /** Simple average of the machine scores (MVP has no per-machine weights). */
@@ -59,4 +66,18 @@ export function resolveProductReward(input: ProductRewardInput): ProductReward {
     machineXp: input.results.reduce((total, r) => total + calculateMachineXp(r.quality), 0),
     streakBonus: getStreakBonus(input.streak),
   };
+}
+
+/**
+ * What the order would pay if it were finished now. With no results yet it is
+ * the order's value before quality; with every result in, it is the payout.
+ */
+export function projectOrderValue(input: ProductRewardInput): number {
+  if (input.results.length > 0) return resolveProductReward(input).coins;
+  return Math.round(
+    input.product.baseValue *
+      getStreakMultiplier(input.streak) *
+      getProductValueMultiplier(input.upgradeLevels) *
+      getGoldenMultiplier(input.isGolden),
+  );
 }

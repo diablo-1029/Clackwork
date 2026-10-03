@@ -32,7 +32,7 @@ export function ResultFeedback({ feedback }: { feedback: MachineFeedback }) {
         {band.label}
         {perfect && <span className="sf-shine pointer-events-none absolute inset-0" aria-hidden />}
       </span>
-      <span className="flex flex-col text-left text-xs leading-tight font-extrabold text-stage-soft">
+      <span className="flex flex-col text-left text-sm leading-tight font-black text-stage-ink">
         <span>+{feedback.xp} XP</span>
         {perfect && feedback.streak >= 2 && <span className="text-orange">PERFECT x{feedback.streak}</span>}
       </span>

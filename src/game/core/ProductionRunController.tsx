@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { audio } from "@/audio/audioManager";
+import { OrderValueChip } from "@/components/counters/OrderValueChip";
 import { ResultFeedback } from "@/components/feedback/ResultFeedback";
 import { LevelUpOverlay } from "@/components/overlays/LevelUpOverlay";
 import { OrderIntro } from "@/components/overlays/OrderIntro";
@@ -22,6 +23,7 @@ import { useUiStore } from "@/stores/uiStore";
 import type { QualityTier, SoundKey } from "@/types/game";
 import { MachineStage } from "./MachineStage";
 import { ProductionProgress } from "./ProductionProgress";
+import { projectOrderValue } from "./RewardResolver";
 import { completeMachine, createOrder, exitMachine, finishProduct } from "./runActions";
 import { MACHINE_PHASES } from "./runStateMachine";
 
@@ -52,7 +54,9 @@ export function ProductionRunController() {
   const factoryLevel = usePlayerStore((s) => s.factoryLevel);
   const onboarding = useProgressionStore((s) => s.onboarding);
   const setOnboarding = useProgressionStore((s) => s.setOnboarding);
-  const materialsLevel = useProgressionStore((s) => s.upgrades.betterMaterials);
+  const upgradeLevels = useProgressionStore((s) => s.upgrades);
+  const materialsLevel = upgradeLevels.betterMaterials;
+  const streak = usePlayerStore((s) => s.perfectStreak);
 
   const [celebrating, setCelebrating] = useState(false);
 
@@ -134,6 +138,12 @@ export function ProductionRunController() {
   const machineVisible = MACHINE_PHASES.includes(phase);
   const interactive = phase === "MACHINE_READY" || phase === "PLAYER_INTERACTION";
   const showingResult = (phase === "MACHINE_RESOLVE" || phase === "RESULT_FEEDBACK") && feedback;
+  const perfectPulse = showingResult && feedback.quality >= 100;
+  // Once paid, show exactly what was paid; until then, what the order is worth so far.
+  const orderValue =
+    phase === "REWARD_SUMMARY" && lastReward?.runId === run.id
+      ? lastReward.coins
+      : projectOrderValue({ product, results: run.results, streak, upgradeLevels, isGolden: run.isGolden });
 
   const handleComplete = (completion: MachineCompletion) => {
     if (!completeMachine(completion)) return;
@@ -161,7 +171,7 @@ export function ProductionRunController() {
       <div
         className={`sf-stage relative min-h-0 flex-1 overflow-hidden rounded-3xl transition-shadow duration-300 ${
           run.isGolden ? "sf-stage-golden" : ""
-        }`}
+        } ${perfectPulse ? "sf-stage-perfect" : ""}`}
         // Result feedback can be tapped away; nothing else on the stage listens for clicks.
         onClick={phase === "RESULT_FEEDBACK" ? () => dispatch("CONTINUE") : undefined}
       >
@@ -175,6 +185,7 @@ export function ProductionRunController() {
             </span>
           )}
           <h2 className="text-base font-black tracking-widest text-stage-ink uppercase sm:text-lg">{product.name}</h2>
+          {phase !== "ORDER_INTRO" && <OrderValueChip value={orderValue} />}
         </div>
 
         <div className="sf-machine-slot absolute inset-x-2 top-11 bottom-[4.75rem] flex items-center justify-center sm:inset-x-4">

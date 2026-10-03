@@ -111,6 +111,17 @@ button:disabled {
     inset 0 0 60px rgba(255, 199, 44, 0.35);
 }
 
+/* A single ring pulse around the stage on a Perfect result. */
+.sf-stage-perfect::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 4px var(--fx-accent);
+  animation: sf-ring 0.55s ease-out 1 both;
+}
+
 /* Conveyor silhouette along the bottom of the stage. */
 .sf-belt {
   background: repeating-linear-gradient(
@@ -180,6 +191,16 @@ button:disabled {
   animation: sf-shine 0.7s ease-out 1 both;
 }
 
+@keyframes sf-ring {
+  from {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+    box-shadow: inset 0 0 0 14px var(--fx-accent);
+  }
+}
+
 @keyframes sf-belt {
   to {
     background-position: -26px 0;
@@ -231,6 +252,7 @@ button:disabled {
 [data-reduced-motion="true"] .sf-pulse,
 [data-reduced-motion="true"] .sf-twinkle,
 [data-reduced-motion="true"] .sf-shine,
+[data-reduced-motion="true"] .sf-stage-perfect::after,
 [data-reduced-motion="true"] .sf-guide line[stroke-dasharray] {
   animation: none;
 }

@@ -7,7 +7,7 @@ import { useProgressionStore } from "@/stores/progressionStore";
 import { useRunStore } from "@/stores/runStore";
 import { useUiStore } from "@/stores/uiStore";
 import { pickProduct, rollGolden } from "./orders";
-import { calculateProductQuality, resolveProductReward } from "./RewardResolver";
+import { calculateProductQuality, projectOrderValue, resolveProductReward } from "./RewardResolver";
 import { completeMachine, createOrder, exitMachine, finishProduct } from "./runActions";
 import { transition } from "./runStateMachine";
 
@@ -71,6 +71,37 @@ describe("reward resolver", () => {
     const golden = resolveProductReward({ ...base, isGolden: true });
     expect(golden.coins).toBe(normal.coins * 5);
     expect(golden.completionXp - normal.completionXp).toBe(5);
+  });
+});
+
+describe("order value projection", () => {
+  const upgradeLevels = { betterMaterials: 1, goldenTouch: 0 };
+
+  it("starts at the order's value before quality", () => {
+    const base = { product: products.soapBar, results: [], streak: 0, upgradeLevels };
+    // 18 × 1.10 (Better Materials) = 19.8 → 20
+    expect(projectOrderValue({ ...base, isGolden: false })).toBe(20);
+    expect(projectOrderValue({ ...base, isGolden: true })).toBe(99);
+  });
+
+  it("moves with each result and ends at exactly what is paid", () => {
+    createOrder();
+    run().dispatch("INTRO_DONE");
+    const project = () =>
+      projectOrderValue({
+        product: products.woodBlock,
+        results: run().run!.results,
+        streak: player().perfectStreak,
+        upgradeLevels: useProgressionStore.getState().upgrades,
+        isGolden: false,
+      });
+
+    expect(project()).toBe(10);
+    playMachine(100);
+    expect(project()).toBe(13);
+    playMachine(60);
+    const projected = project();
+    expect(finishProduct()?.coins).toBe(projected);
   });
 });
 
