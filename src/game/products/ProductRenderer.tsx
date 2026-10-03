@@ -29,7 +29,7 @@ const imprintScale = (rect: Rect) => Math.min(rect.w / 160, rect.h / 78);
 export function ProductImprint({ rect, mark, color }: { rect: Rect; mark: StampMark; color: string }) {
   return (
     <g
-      transform={`translate(${rect.x + rect.w / 2 + mark.shift * rect.w} ${rect.y + rect.h / 2}) scale(${imprintScale(rect)})`}
+      transform={`translate(${rect.x + rect.w / 2 + mark.shift * rect.w} ${rect.y + rect.h / 2}) scale(${imprintScale(rect) * mark.scale})`}
       opacity={mark.strength}
     >
       <circle r="24" fill="none" stroke={color} strokeWidth="3.5" />
@@ -186,7 +186,9 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
           </g>
         ))}
 
-        {look?.stamp && <ProductImprint rect={{ x, y, w, h }} mark={look.stamp} color={colors.dark} />}
+        {look?.stamps?.map((mark, index) => (
+          <ProductImprint key={index} rect={{ x, y, w, h }} mark={mark} color={colors.dark} />
+        ))}
       </g>
 
       {isGolden &&

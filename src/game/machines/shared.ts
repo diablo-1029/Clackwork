@@ -26,6 +26,8 @@ export interface MachineProps {
   factoryLevel: number;
   /** How many times this machine has already run earlier in this product's chain. */
   step: number;
+  /** Which way the machine plays this time; see machines/variants.ts. */
+  variant: string;
   /** Input is accepted only while true. */
   active: boolean;
   /** Show the extra first-time hint animation. */

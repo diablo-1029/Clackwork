@@ -59,3 +59,24 @@ export function calculatePackagerQuality({ points, from, to }: PackagerInput): n
 export function isTapeAttempt({ points, from, to }: PackagerInput): boolean {
   return measureTrace(points, from, to).coverage >= packagerTuning.minCoverage;
 }
+
+export interface TapeRun {
+  from: Point;
+  to: Point;
+}
+
+/** The box seam runs left to right across the middle of the stage. */
+const TAPE_ACROSS: TapeRun = { from: { x: 68, y: 150 }, to: { x: 332, y: 150 } };
+const TAPE_DOWN: TapeRun = { from: { x: 200, y: 52 }, to: { x: 200, y: 262 } };
+
+/** The strips a Packager variant asks for, in the order they are laid. */
+export function tapeRuns(variant: string): TapeRun[] {
+  switch (variant) {
+    case "down":
+      return [TAPE_DOWN];
+    case "cross":
+      return [TAPE_ACROSS, TAPE_DOWN];
+    default:
+      return [TAPE_ACROSS];
+  }
+}

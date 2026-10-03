@@ -1,4 +1,4 @@
-import { clamp } from "@/lib/math";
+import { clamp, hashString, seededRandom } from "@/lib/math";
 
 export const polisherTuning = {
   /** Grid resolution used to track how polished each patch of the surface is. */
@@ -61,4 +61,34 @@ export function calculatePolisherQuality({ cells, durationMs }: PolisherInput): 
       100,
     ),
   );
+}
+
+/**
+ * The surface as it arrives: 0 where it is dull, 1 where it is already clean.
+ * "patches" leaves a few blotches to find; "edges" a dull border around a clean middle.
+ */
+export function initialPolish(variant: string, runId: string): Float32Array {
+  const { cols, rows } = polisherTuning;
+  const cells = new Float32Array(cols * rows);
+  if (variant === "patches") {
+    cells.fill(1);
+    const random = seededRandom(hashString(`polish:${runId}`));
+    for (let blob = 0; blob < 4; blob++) {
+      const cx = 2 + random() * (cols - 4);
+      const cy = 2 + random() * (rows - 4);
+      const radius = 2.6 + random() * 1.2;
+      for (let i = 0; i < cells.length; i++) {
+        if (Math.hypot((i % cols) - cx, Math.floor(i / cols) - cy) <= radius) cells[i] = 0;
+      }
+    }
+  } else if (variant === "edges") {
+    const border = 3;
+    for (let i = 0; i < cells.length; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const inside = col >= border && col < cols - border && row >= border && row < rows - border;
+      cells[i] = inside ? 1 : 0;
+    }
+  }
+  return cells;
 }

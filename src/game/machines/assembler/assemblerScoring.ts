@@ -1,4 +1,4 @@
-import { clamp, distance, type Point } from "@/lib/math";
+import { clamp, distance, hashString, seededRandom, type Point } from "@/lib/math";
 import { STAGE } from "../shared";
 
 export const assemblerTuning = {
@@ -216,9 +216,22 @@ export const robotStages: AssemblyStage[] = [
   },
 ];
 
-/** The Assembler step for the nth time the machine appears in a product's chain. */
-export function stageForStep(step: number): AssemblyStage {
-  return robotStages[clamp(Math.floor(step), 0, robotStages.length - 1)];
+/**
+ * The Assembler step for the nth time the machine appears in a product's chain.
+ * With a `runId` the parts swap tray spots (the same spots, dealt differently),
+ * so the tray is not laid out identically every time. Sockets never move.
+ */
+export function stageForStep(step: number, runId?: string): AssemblyStage {
+  const stage = robotStages[clamp(Math.floor(step), 0, robotStages.length - 1)];
+  if (!runId) return stage;
+
+  const random = seededRandom(hashString(`tray:${runId}:${stage.id}`));
+  const spots = stage.parts.map((part) => part.tray);
+  for (let i = spots.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [spots[i], spots[j]] = [spots[j], spots[i]];
+  }
+  return { ...stage, parts: stage.parts.map((part, index) => ({ ...part, tray: spots[index] })) };
 }
 
 export type DropOutcome =

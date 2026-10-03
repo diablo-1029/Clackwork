@@ -18,6 +18,8 @@ interface UiState {
     goldenNext: boolean;
     qualityOverride: number | null;
     stressBursts: number;
+    /** Forces every machine to its nth variant (0 = basic), ignoring levels. Null plays normally. */
+    variantIndex: number | null;
   };
 
   setHydrated: () => void;
@@ -42,7 +44,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   pendingLevelUps: [],
   queuedProducts: [],
   toast: null,
-  debug: { goldenNext: false, qualityOverride: null, stressBursts: 0 },
+  debug: { goldenNext: false, qualityOverride: null, stressBursts: 0, variantIndex: null },
 
   setHydrated: () => set({ hydrated: true }),
   startSession: () => set({ sessionStarted: true }),
@@ -64,6 +66,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
       screen: "factory",
       pendingLevelUps: [],
       queuedProducts: [],
-      debug: { goldenNext: false, qualityOverride: null, stressBursts: 0 },
+      debug: { goldenNext: false, qualityOverride: null, stressBursts: 0, variantIndex: null },
     }),
 }));

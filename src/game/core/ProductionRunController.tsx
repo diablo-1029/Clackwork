@@ -15,6 +15,7 @@ import { pacing } from "@/config/progression";
 import { upgrades } from "@/config/upgrades";
 import { getQualityBand } from "@/game/economy/multipliers";
 import type { MachineCompletion } from "@/game/machines/shared";
+import { machineVariants, pickVariant } from "@/game/machines/variants";
 import { deriveProductLook } from "@/game/products/productLook";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useProgressionStore } from "@/stores/progressionStore";
@@ -49,6 +50,7 @@ export function ProductionRunController() {
   const pendingLevelUps = useUiStore((s) => s.pendingLevelUps);
   const clearLevelUps = useUiStore((s) => s.clearLevelUps);
   const showToast = useUiStore((s) => s.showToast);
+  const forcedVariant = useUiStore((s) => s.debug.variantIndex);
 
   const productsCompleted = usePlayerStore((s) => s.totalProductsCompleted);
   const factoryLevel = usePlayerStore((s) => s.factoryLevel);
@@ -136,7 +138,6 @@ export function ProductionRunController() {
   const machineId = run.machineSequence[run.currentMachineIndex];
   const machine = machines[machineId];
   const stepLabel = product.stepLabels?.[run.currentMachineIndex] ?? null;
-  const instruction = product.stepHints?.[run.currentMachineIndex] ?? machine.instruction;
   const machineVisible = MACHINE_PHASES.includes(phase);
   const interactive = phase === "MACHINE_READY" || phase === "PLAYER_INTERACTION";
   const showingResult = (phase === "MACHINE_RESOLVE" || phase === "RESULT_FEEDBACK") && feedback;
@@ -165,6 +166,13 @@ export function ProductionRunController() {
   const showHint =
     (machineId === "cutter" && !onboarding.hasCompletedFirstCut) ||
     (machineId === "packager" && !onboarding.hasCompletedFirstPackage);
+  // How the machine plays this time. A machine keeps the variant it was mounted with.
+  const variants = machineVariants[machineId];
+  const variant =
+    forcedVariant === null
+      ? pickVariant(machineId, run.id, run.currentMachineIndex, factoryLevel, showHint)
+      : variants[Math.min(forcedVariant, variants.length - 1)];
+  const instruction = product.stepHints?.[run.currentMachineIndex] ?? variant.instruction ?? machine.instruction;
 
   return (
     <div className="flex h-full flex-col gap-2">
@@ -211,6 +219,7 @@ export function ProductionRunController() {
                 richness={materialsLevel / upgrades.betterMaterials.maxLevel}
                 look={look}
                 factoryLevel={factoryLevel}
+                variant={variant.id}
                 step={run.machineSequence.slice(0, run.currentMachineIndex).filter((id) => id === machineId).length}
                 active={interactive}
                 showHint={showHint}

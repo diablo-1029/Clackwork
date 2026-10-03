@@ -8,23 +8,23 @@ import { ProductBody } from "@/game/products/ProductRenderer";
 import { distance, measureTrace, type Point } from "@/lib/math";
 import { useTraceDrag, type DragSession } from "@/lib/pointer/useTraceDrag";
 import { STAGE, type MachineProps } from "../shared";
-import { calculatePackagerQuality, isTapeAttempt } from "./packagerScoring";
+import { calculatePackagerQuality, isTapeAttempt, tapeRuns } from "./packagerScoring";
 
 const BOX = { x: 96, y: 66, w: 208, h: 168, r: 12 } as const;
 const SEAM_Y = BOX.y + BOX.h / 2;
-/** The tape is pulled from the dispenser on the left across the seam to the far edge. */
-const TAPE_FROM: Point = { x: 68, y: SEAM_Y };
-const TAPE_TO: Point = { x: 332, y: SEAM_Y };
 /** How close to the tape tab a press must land, in stage units. Generous for touch. */
 const GRAB_RADIUS = 48;
 const AUTO_FINISH = 0.985;
 const TAPE_WIDTH = 30;
+
+const pointsAttr = (points: Point[]) => points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 
 export function PackagerMachine({
   material,
   isGolden,
   richness,
   look,
+  variant,
   active,
   showHint,
   onInteractionStart,
@@ -34,10 +34,17 @@ export function PackagerMachine({
 }: MachineProps) {
   const id = useId().replace(/:/g, "");
   const [hinting] = useState(showHint);
-  const [stage, setStage] = useState<"idle" | "taping" | "sealed">("idle");
+  // One strip of tape per run, laid in order. "cross" has two.
+  const [runs] = useState(() => tapeRuns(variant));
+  /** Finished strips, as drawn. */
+  const [laid, setLaid] = useState<string[]>([]);
+  const [taping, setTaping] = useState(false);
+
   const surfaceRef = useRef<SVGSVGElement>(null);
   const tapeRef = useRef<SVGPolylineElement>(null);
   const tabRef = useRef<SVGGElement>(null);
+  const qualities = useRef<number[]>([]);
+  const firstTouch = useRef(0);
   const timers = useRef<number[]>([]);
   const loop = useLoopSound("tapeLoop");
 
@@ -46,47 +53,61 @@ export function PackagerMachine({
     return () => pending.forEach((t) => window.clearTimeout(t));
   }, []);
 
+  const sealed = laid.length >= runs.length;
+  const run = runs[Math.min(laid.length, runs.length - 1)];
+  const { from, to } = run;
+  const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI;
+
   const drawTape = (points: Point[]) => {
-    const path = [TAPE_FROM, ...points].map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-    tapeRef.current?.setAttribute("points", path);
-    const tip = points[points.length - 1] ?? TAPE_FROM;
-    tabRef.current?.setAttribute("transform", `translate(${tip.x.toFixed(1)} ${tip.y.toFixed(1)})`);
+    tapeRef.current?.setAttribute("points", pointsAttr([from, ...points]));
+    const tip = points[points.length - 1] ?? from;
+    tabRef.current?.setAttribute("transform", `translate(${tip.x.toFixed(1)} ${tip.y.toFixed(1)}) rotate(${angle})`);
   };
 
   const retract = () => {
     loop.stop();
     drawTape([]);
-    setStage("idle");
-    onInteractionCancel();
+    setTaping(false);
+    if (qualities.current.length === 0) onInteractionCancel();
   };
 
   const finish = (session: DragSession) => {
     loop.stop();
-    const input = { points: session.points, from: TAPE_FROM, to: TAPE_TO };
+    const input = { points: session.points, from, to };
 
-    // Letting go right away just lets the tape spring back.
+    // Letting go right away just lets the tape spring back. Strips already laid stay.
     if (!isTapeAttempt(input)) {
       retract();
       return;
     }
 
-    const quality = calculatePackagerQuality(input);
+    qualities.current.push(calculatePackagerQuality(input));
     const tip = session.points[session.points.length - 1];
-    setStage("sealed");
+    setTaping(false);
+    setLaid((current) => [...current, pointsAttr([from, ...session.points])]);
+    tapeRef.current?.setAttribute("points", "");
 
     audio.play("tapeSnap");
-    timers.current.push(window.setTimeout(() => audio.play("boxClose"), 90));
     burst(tip, { count: 8, spread: 40, colors: ["#ffffff", "var(--fx-accent)", "var(--fx-accent-2)"] });
-    burst({ x: BOX.x + BOX.w / 2, y: SEAM_Y }, { count: quality >= 95 ? 14 : 8, spread: 90, shape: "spark" });
 
-    onComplete({ quality, durationMs: performance.now() - session.startedAt });
+    if (qualities.current.length < runs.length) return;
+
+    const quality = qualities.current.reduce((sum, q) => sum + q, 0) / runs.length;
+    timers.current.push(window.setTimeout(() => audio.play("boxClose"), 90));
+    burst({ x: BOX.x + BOX.w / 2, y: SEAM_Y }, { count: quality >= 95 ? 14 : 8, spread: 90, shape: "spark" });
+    onComplete({
+      quality,
+      durationMs: performance.now() - firstTouch.current,
+      metadata: { variant, strips: [...qualities.current] },
+    });
   };
 
   useTraceDrag(surfaceRef, {
-    enabled: active && stage !== "sealed",
-    canStart: (point) => distance(point, TAPE_FROM) <= GRAB_RADIUS,
-    onStart: () => {
-      setStage("taping");
+    enabled: active && !sealed,
+    canStart: (point) => distance(point, from) <= GRAB_RADIUS,
+    onStart: (session) => {
+      if (firstTouch.current === 0) firstTouch.current = session.startedAt;
+      setTaping(true);
       loop.start();
       onInteractionStart();
     },
@@ -96,7 +117,7 @@ export function PackagerMachine({
       drawTape(points);
 
       // The pull rises in pitch as the tape stretches further.
-      const trace = measureTrace(points, TAPE_FROM, TAPE_TO);
+      const trace = measureTrace(points, from, to);
       loop.setIntensity(0.3 + trace.endProgress * 0.7);
       return trace.endProgress >= AUTO_FINISH;
     },
@@ -104,15 +125,15 @@ export function PackagerMachine({
     onCancel: retract,
   });
 
-  const sealed = stage === "sealed";
-
   return (
     <svg
       ref={surfaceRef}
       viewBox={`0 0 ${STAGE.w} ${STAGE.h}`}
       className="sf-machine-surface h-full w-full"
       role="img"
-      aria-label="Packager. Drag the tape from the dispenser across the box to seal it."
+      aria-label={`Packager. Drag the tape from the dispenser to the far edge of the box to seal it.${
+        runs.length > 1 ? ` Strip ${Math.min(laid.length + 1, runs.length)} of ${runs.length}.` : ""
+      }`}
     >
       <defs>
         <linearGradient id={`${id}-card`} x1="0" y1="0" x2="0" y2="1">
@@ -168,16 +189,21 @@ export function PackagerMachine({
         <rect x={BOX.x} y={BOX.y} width={BOX.w} height={BOX.h} rx={BOX.r} fill="none" stroke="#8a623a" strokeWidth="2" />
         <line x1={BOX.x} y1={SEAM_Y} x2={BOX.x + BOX.w} y2={SEAM_Y} stroke="#8a623a" strokeWidth="2" />
 
-        {/* Seam guide */}
+        {/* Strips already laid */}
+        {laid.map((points, index) => (
+          <polyline key={index} points={points} fill="none" stroke="var(--fx-accent)" strokeOpacity="0.88" strokeWidth={TAPE_WIDTH} strokeLinejoin="round" strokeLinecap="butt" />
+        ))}
+
+        {/* Guide for the strip on offer */}
         {!sealed && (
-          <g className={stage === "taping" ? "sf-guide sf-guide-active" : "sf-guide"}>
-            <line x1={TAPE_FROM.x} y1={SEAM_Y} x2={TAPE_TO.x} y2={SEAM_Y} stroke="var(--fx-accent-2)" strokeWidth={TAPE_WIDTH} opacity="0.2" />
-            <line x1={TAPE_FROM.x} y1={SEAM_Y} x2={TAPE_TO.x} y2={SEAM_Y} stroke="#ffffff" strokeWidth="2.5" strokeDasharray="7 7" strokeLinecap="round" />
-            <rect x={TAPE_TO.x - 5} y={SEAM_Y - 19} width="10" height="38" rx="5" fill="var(--fx-accent)" stroke="#ffffff" strokeWidth="1.5" />
+          <g className={taping ? "sf-guide sf-guide-active" : "sf-guide"}>
+            <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="var(--fx-accent-2)" strokeWidth={TAPE_WIDTH} opacity="0.2" />
+            <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="#ffffff" strokeWidth="2.5" strokeDasharray="7 7" strokeLinecap="round" />
+            <rect x="-5" y="-19" width="10" height="38" rx="5" transform={`translate(${to.x} ${to.y}) rotate(${angle})`} fill="var(--fx-accent)" stroke="#ffffff" strokeWidth="1.5" />
           </g>
         )}
 
-        {/* The tape itself, updated outside React while dragging */}
+        {/* The strip being pulled, updated outside React while dragging */}
         <polyline
           ref={tapeRef}
           fill="none"
@@ -226,17 +252,25 @@ export function PackagerMachine({
         )}
       </motion.g>
 
-      {/* Dispenser */}
-      <g style={{ pointerEvents: "none" }}>
-        <rect x="22" y={SEAM_Y - 30} width="40" height="60" rx="12" fill="var(--fx-machine-dark)" />
-        <circle cx="42" cy={SEAM_Y} r="19" fill="var(--fx-accent)" className={stage === "taping" ? "sf-spin-fast" : undefined} />
-        <circle cx="42" cy={SEAM_Y} r="8" fill="var(--fx-machine-dark)" />
-      </g>
+      {/* Dispenser, sitting behind the start of the strip on offer */}
+      {!sealed && (
+        <g transform={`translate(${from.x} ${from.y}) rotate(${angle})`} style={{ pointerEvents: "none" }}>
+          <rect x="-46" y="-30" width="40" height="60" rx="12" fill="var(--fx-machine-dark)" />
+          <circle cx="-26" cy="0" r="19" fill="var(--fx-accent)" className={taping ? "sf-spin-fast" : undefined} />
+          <circle cx="-26" cy="0" r="8" fill="var(--fx-machine-dark)" />
+        </g>
+      )}
 
       {/* Tape tab: the thing to grab */}
       {!sealed && (
-        <g ref={tabRef} transform={`translate(${TAPE_FROM.x} ${TAPE_FROM.y})`} style={{ pointerEvents: "none" }}>
-          <g className={stage === "idle" && active ? "sf-pulse" : undefined}>
+        <g
+          // Re-keyed per strip so the tab starts at the new dispenser.
+          key={laid.length}
+          ref={tabRef}
+          transform={`translate(${from.x} ${from.y}) rotate(${angle})`}
+          style={{ pointerEvents: "none" }}
+        >
+          <g className={!taping && active ? "sf-pulse" : undefined}>
             <rect x="-9" y={-TAPE_WIDTH / 2 - 3} width="18" height={TAPE_WIDTH + 6} rx="6" fill="#ffffff" stroke="var(--fx-accent)" strokeWidth="3" />
             <path d="M -2 -5 L 3 0 L -2 5" fill="none" stroke="var(--fx-accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           </g>
@@ -244,17 +278,16 @@ export function PackagerMachine({
       )}
 
       {/* First-time hint */}
-      {hinting && stage === "idle" && active && (
+      {hinting && !taping && laid.length === 0 && active && (
         <motion.circle
           r="11"
-          cy={SEAM_Y}
           fill="#ffffff"
           fillOpacity="0.55"
           stroke="var(--fx-accent)"
           strokeWidth="3"
           style={{ pointerEvents: "none" }}
-          initial={{ cx: TAPE_FROM.x, opacity: 0 }}
-          animate={{ cx: [TAPE_FROM.x, TAPE_TO.x], opacity: [0, 1, 1, 0] }}
+          initial={{ cx: from.x, cy: from.y, opacity: 0 }}
+          animate={{ cx: [from.x, to.x], cy: [from.y, to.y], opacity: [0, 1, 1, 0] }}
           transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 0.35, ease: "easeInOut" }}
         />
       )}

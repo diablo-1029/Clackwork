@@ -80,6 +80,23 @@ export function DebugPanel() {
           Applies to the next order created, even if the product is still locked.
         </span>
       </label>
+      <label className="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold">
+        Machine variant
+        <select
+          value={debug.variantIndex ?? ""}
+          onChange={(event) => setDebug({ variantIndex: event.target.value === "" ? null : Number(event.target.value) })}
+          className="h-11 rounded-xl border border-line bg-surface px-2"
+        >
+          <option value="">Normal (by level)</option>
+          <option value="0">Always the basic one</option>
+          <option value="1">Always the 2nd</option>
+          <option value="2">Always the 3rd</option>
+          <option value="3">Always the 4th</option>
+        </select>
+        <span className="text-xs font-bold text-muted">
+          Applies from the next machine. Machines with fewer variants use their last one.
+        </span>
+      </label>
       <label className="mt-3 flex items-center gap-2 text-sm font-bold">
         Quality override
         <input

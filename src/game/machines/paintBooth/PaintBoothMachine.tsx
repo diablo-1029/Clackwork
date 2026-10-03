@@ -15,10 +15,11 @@ import {
   depositPaint,
   paintBoothTuning,
   paintCellCenter,
+  paintNozzle,
   paintCoverage,
 } from "./paintBoothScoring";
 
-const { cols, rows, nozzleRadius, thickThreshold, coveredThreshold } = paintBoothTuning;
+const { cols, rows, thickThreshold, coveredThreshold } = paintBoothTuning;
 const FALLBACK_GLAZE = "#2f7fd8";
 /** Overspray marks kept for redraws; older ones are dropped. */
 const MAX_SPLATS = 80;
@@ -46,12 +47,16 @@ export function PaintBoothMachine({
   isGolden,
   richness,
   look,
+  variant,
   active,
   onInteractionStart,
   onComplete,
   burst,
 }: MachineProps) {
   const id = useId().replace(/:/g, "");
+  // The spray tip for this visit; `nozzle` below is where the player is holding it.
+  const [sprayTip] = useState(() => paintNozzle(variant));
+  const nozzleRadius = sprayTip.radius;
   const [glaze] = useState(() => pickGlaze(runId, materialProfiles[material].glazeColors, isGolden));
   const [done, setDone] = useState(false);
   const [spraying, setSpraying] = useState(false);
@@ -92,7 +97,7 @@ export function PaintBoothMachine({
       ctx.fill();
       ctx.globalAlpha = 1;
     },
-    [glaze],
+    [glaze, nozzleRadius],
   );
 
   const drawPool = useCallback((ctx: CanvasRenderingContext2D, index: number) => {
@@ -175,7 +180,7 @@ export function PaintBoothMachine({
     onComplete({
       quality: calculatePaintBoothQuality({ cells: cells.current, oversprayMs: oversprayMs.current }),
       durationMs: sprayedMs.current,
-      metadata: { glaze, oversprayMs: Math.round(oversprayMs.current) },
+      metadata: { glaze, variant, oversprayMs: Math.round(oversprayMs.current) },
     });
   };
 
@@ -185,7 +190,7 @@ export function PaintBoothMachine({
     if (!at) return;
     sprayedMs.current += dtMs;
 
-    const offTile = depositPaint(cells.current, at, dtMs);
+    const offTile = depositPaint(cells.current, at, dtMs, sprayTip);
     if (offTile) {
       oversprayMs.current += dtMs;
       if (splats.current.length < MAX_SPLATS) splats.current.push(at);
@@ -211,7 +216,7 @@ export function PaintBoothMachine({
       mist.addColorStop(0, glaze);
       mist.addColorStop(1, "rgba(255, 255, 255, 0)");
       // Opacity builds with time under the spray, like the thickness grid does.
-      ctx.globalAlpha = Math.min(1, (paintBoothTuning.flowPerMs * dtMs) / coveredThreshold) * 1.6;
+      ctx.globalAlpha = Math.min(1, ((sprayTip.flow * dtMs) / coveredThreshold) * 1.6);
       ctx.fillStyle = mist;
       ctx.beginPath();
       ctx.arc(at.x, at.y, nozzleRadius, 0, Math.PI * 2);

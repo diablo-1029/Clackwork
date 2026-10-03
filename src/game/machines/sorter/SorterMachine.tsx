@@ -5,13 +5,16 @@ import { useEffect, useId, useRef, useState } from "react";
 import { audio } from "@/audio/audioManager";
 import { getMaterialColors, materialProfiles } from "@/game/products/materialProfiles";
 import { STAGE, type MachineProps } from "../shared";
-import { calculateSorterQuality, createSortQueue, sortShapes, type SortPick, type SortShape } from "./sorterScoring";
+import { calculateSorterQuality, createSortQueue, sortPlan, type SortPick, type SortShape } from "./sorterScoring";
 
 /** Where a gem waits to be sorted. */
 const GATE = { x: 200, y: 112 } as const;
-const BIN = { w: 132, h: 84, y: 188 } as const;
-/** Left edge of each bin, in lane order. */
-const BIN_X = [46, 222] as const;
+const BIN = { h: 84, y: 188 } as const;
+/** Width and left edges of the bins, for two bins and for three. */
+const BIN_LAYOUT = {
+  2: { w: 132, x: [46, 222], icon: 34, label: 64, font: 17 },
+  3: { w: 112, x: [20, 144, 268], icon: 26, label: 50, font: 14 },
+} as const;
 /** How long a gem takes to fly into its bin before the next one arrives. */
 const FLIGHT_MS = 240;
 
@@ -49,8 +52,12 @@ function Piece({ shape, colors, faceted }: PieceProps) {
   );
 }
 
-export function SorterMachine({ runId, material, isGolden, active, onInteractionStart, onComplete, burst }: MachineProps) {
-  const [queue] = useState(() => createSortQueue(runId));
+export function SorterMachine({ runId, material, isGolden, variant, active, onInteractionStart, onComplete, burst }: MachineProps) {
+  const [plan] = useState(() => sortPlan(variant));
+  const bins = plan.bins;
+  const layout = BIN_LAYOUT[bins.length === 3 ? 3 : 2];
+  const binX = layout.x;
+  const [queue] = useState(() => createSortQueue(runId, plan.count, plan.bins.map((bin) => bin.id)));
   const [index, setIndex] = useState(0);
   /** Outcome per gem so far, for the progress pips. */
   const [outcomes, setOutcomes] = useState<boolean[]>([]);
@@ -67,7 +74,8 @@ export function SorterMachine({ runId, material, isGolden, active, onInteraction
   const colors = getMaterialColors(material, isGolden);
 
   const total = queue.length;
-  const shape = sortShapes.find((s) => s.id === queue[Math.min(index, total - 1)]) ?? sortShapes[0];
+  const binCount = bins.length;
+  const shape = bins.find((s) => s.id === queue[Math.min(index, total - 1)]) ?? bins[0];
   const allSorted = outcomes.length >= total;
 
   useEffect(() => {
@@ -86,7 +94,7 @@ export function SorterMachine({ runId, material, isGolden, active, onInteraction
   const send = (lane: number) => {
     if (!active || finished.current || flight !== null || index >= total) return;
     const now = performance.now();
-    const correct = sortShapes[lane]?.id === queue[index];
+    const correct = bins[lane]?.id === queue[index];
 
     if (!touched.current) {
       touched.current = true;
@@ -98,7 +106,7 @@ export function SorterMachine({ runId, material, isGolden, active, onInteraction
     setLastPick({ lane, correct, n: picks.current.length });
     setOutcomes((current) => [...current, correct]);
 
-    const landing = { x: BIN_X[lane] + BIN.w / 2, y: BIN.y + BIN.h / 2 };
+    const landing = { x: binX[lane] + layout.w / 2, y: BIN.y + BIN.h / 2 };
     timers.current.push(
       window.setTimeout(() => {
         audio.play(correct ? "sortDrop" : "sortMiss");
@@ -112,7 +120,7 @@ export function SorterMachine({ runId, material, isGolden, active, onInteraction
       onComplete({
         quality: calculateSorterQuality(picks.current),
         durationMs: now - startedAt.current,
-        metadata: { correct: picks.current.filter((pick) => pick.correct).length, total },
+        metadata: { variant, correct: picks.current.filter((pick) => pick.correct).length, total },
       });
       return;
     }
@@ -125,7 +133,7 @@ export function SorterMachine({ runId, material, isGolden, active, onInteraction
     );
   };
 
-  // Arrow keys pick a bin, alongside the bin buttons themselves.
+  // Arrow keys pick a bin, alongside the bin buttons themselves: ← first, → last, ↓ the middle of three.
   const sendRef = useRef(send);
   useEffect(() => {
     sendRef.current = send;
@@ -134,15 +142,16 @@ export function SorterMachine({ runId, material, isGolden, active, onInteraction
     if (!active) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "ArrowLeft") sendRef.current(0);
-      else if (event.key === "ArrowRight") sendRef.current(sortShapes.length - 1);
+      else if (event.key === "ArrowRight") sendRef.current(binCount - 1);
+      else if (event.key === "ArrowDown" && binCount === 3) sendRef.current(1);
       else return;
       event.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active]);
+  }, [active, binCount]);
 
-  const target = flight === null ? GATE : { x: BIN_X[flight] + BIN.w / 2, y: BIN.y + BIN.h / 2 - 6 };
+  const target = flight === null ? GATE : { x: binX[flight] + layout.w / 2, y: BIN.y + BIN.h / 2 - 6 };
 
   return (
     <div className="relative h-full w-full">
@@ -153,12 +162,18 @@ export function SorterMachine({ runId, material, isGolden, active, onInteraction
         {[26, 50, 74].map((y) => (
           <rect key={y} x="176" y={y} width="48" height="4" fill="var(--fx-belt-stripe)" />
         ))}
-        <path d={`M 176 ${GATE.y + 14} L ${BIN_X[0] + BIN.w / 2} ${BIN.y} M 224 ${GATE.y + 14} L ${BIN_X[1] + BIN.w / 2} ${BIN.y}`} stroke="var(--fx-machine-dark)" strokeOpacity="0.35" strokeWidth="26" strokeLinecap="round" />
+        <path
+          d={binX.map((left) => `M ${GATE.x} ${GATE.y + 14} L ${left + layout.w / 2} ${BIN.y}`).join(" ")}
+          stroke="var(--fx-machine-dark)"
+          strokeOpacity="0.35"
+          strokeWidth="26"
+          strokeLinecap="round"
+        />
         <circle cx={GATE.x} cy={GATE.y} r="33" fill="var(--fx-machine)" stroke="var(--fx-machine-dark)" strokeWidth="4" />
         <circle cx={GATE.x} cy={GATE.y} r="33" fill="none" stroke="var(--fx-accent-2)" strokeWidth="2" strokeDasharray="5 6" opacity="0.8" />
 
         {/* Bins, each marked with the shape it takes */}
-        {sortShapes.map((bin, lane) => {
+        {bins.map((bin, lane) => {
           const hit = lastPick?.lane === lane ? lastPick : null;
           return (
             <motion.g
@@ -169,18 +184,18 @@ export function SorterMachine({ runId, material, isGolden, active, onInteraction
               animate={hit ? (hit.correct ? { y: [0, 5, 0] } : { x: [0, -5, 5, -3, 0] }) : { x: 0, y: 0 }}
               transition={{ duration: 0.3, delay: (FLIGHT_MS * 0.7) / 1000 }}
             >
-              <rect x={BIN_X[lane]} y={BIN.y + 6} width={BIN.w} height={BIN.h} rx="16" fill="var(--fx-machine-dark)" />
-              <rect x={BIN_X[lane]} y={BIN.y} width={BIN.w} height={BIN.h} rx="16" fill="var(--fx-machine)" />
-              <rect x={BIN_X[lane] + 8} y={BIN.y + 8} width={BIN.w - 16} height={BIN.h - 16} rx="10" fill="var(--fx-machine-dark)" opacity="0.55" />
+              <rect x={binX[lane]} y={BIN.y + 6} width={layout.w} height={BIN.h} rx="16" fill="var(--fx-machine-dark)" />
+              <rect x={binX[lane]} y={BIN.y} width={layout.w} height={BIN.h} rx="16" fill="var(--fx-machine)" />
+              <rect x={binX[lane] + 8} y={BIN.y + 8} width={layout.w - 16} height={BIN.h - 16} rx="10" fill="var(--fx-machine-dark)" opacity="0.55" />
               <path
                 d={bin.path}
-                transform={`translate(${BIN_X[lane] + 34} ${BIN.y + BIN.h / 2})`}
+                transform={`translate(${binX[lane] + layout.icon} ${BIN.y + BIN.h / 2}) scale(${bins.length === 3 ? 0.8 : 1})`}
                 fill="none"
                 stroke="#ffffff"
                 strokeWidth="3"
                 strokeLinejoin="round"
               />
-              <text x={BIN_X[lane] + 64} y={BIN.y + BIN.h / 2 + 6} fontSize="17" fontWeight="900" fill="#ffffff">
+              <text x={binX[lane] + layout.label} y={BIN.y + BIN.h / 2 + 6} fontSize={layout.font} fontWeight="900" fill="#ffffff">
                 {bin.label}
               </text>
             </motion.g>
@@ -224,15 +239,15 @@ export function SorterMachine({ runId, material, isGolden, active, onInteraction
       </svg>
 
       {/* Each bin is a real button, so touch, mouse and keyboard all work. */}
-      {sortShapes.map((bin, lane) => (
+      {bins.map((bin, lane) => (
         <button
           key={bin.id}
           type="button"
           className="sf-machine-surface absolute cursor-pointer rounded-2xl"
           style={{
-            left: `${(BIN_X[lane] / STAGE.w) * 100}%`,
+            left: `${(binX[lane] / STAGE.w) * 100}%`,
             top: `${((BIN.y - 8) / STAGE.h) * 100}%`,
-            width: `${(BIN.w / STAGE.w) * 100}%`,
+            width: `${(layout.w / STAGE.w) * 100}%`,
             height: `${((BIN.h + 20) / STAGE.h) * 100}%`,
           }}
           aria-label={`${bin.label} bin. The piece at the gate is ${shape.label.toLowerCase()}.`}

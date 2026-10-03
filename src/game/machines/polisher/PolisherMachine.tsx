@@ -9,7 +9,7 @@ import { ProductBody } from "@/game/products/ProductRenderer";
 import { distance, hashString, seededRandom, type Point } from "@/lib/math";
 import { useTraceDrag, type DragSession } from "@/lib/pointer/useTraceDrag";
 import { PRODUCT_RECT, STAGE, type MachineProps } from "../shared";
-import { calculatePolisherQuality, polishCoverage, polisherTuning } from "./polisherScoring";
+import { calculatePolisherQuality, initialPolish, polishCoverage, polisherTuning } from "./polisherScoring";
 
 const { cols, rows, polishedThreshold } = polisherTuning;
 const CELL_W = PRODUCT_RECT.w / cols;
@@ -35,6 +35,7 @@ export function PolisherMachine({
   isGolden,
   richness,
   look,
+  variant,
   active,
   onInteractionStart,
   onComplete,
@@ -48,7 +49,10 @@ export function PolisherMachine({
   const surfaceRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SVGGElement>(null);
-  const cells = useRef(new Float32Array(cols * rows));
+  // Some variants arrive partly clean: only the dull regions need work.
+  const [initial] = useState(() => initialPolish(variant, runId));
+  const [baseline] = useState(() => polishCoverage(initial));
+  const cells = useRef(new Float32Array(initial));
   const lastStamp = useRef<Point | null>(null);
   const touched = useRef(false);
   /** Time actually spent buffing; pauses between strokes do not count. */
@@ -216,7 +220,8 @@ export function PolisherMachine({
     }
 
     const coverage = polishCoverage(cells.current);
-    setPercent(Math.round(coverage * 100));
+    // The meter shows progress through the dull part, so it always starts at 0.
+    setPercent(Math.round(((coverage - baseline) / Math.max(0.01, 1 - baseline)) * 100));
     return coverage >= polisherTuning.autoFinishCoverage;
   };
 

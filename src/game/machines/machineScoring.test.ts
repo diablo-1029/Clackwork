@@ -10,17 +10,20 @@ import {
   stageForStep,
 } from "./assembler/assemblerScoring";
 import { cutPatterns, getCutPattern, pickCutPattern, pieceShift, splitAlong } from "./cutter/cutterGeometry";
-import { calculatePackagerQuality } from "./packager/packagerScoring";
+import { calculatePackagerQuality, tapeRuns } from "./packager/packagerScoring";
 import {
   calculatePaintBoothQuality,
   depositPaint,
   paintBoothTuning,
   paintCoverage,
+  paintNozzles,
+  type PaintNozzle,
 } from "./paintBooth/paintBoothScoring";
-import { calculatePolisherQuality, polisherTuning } from "./polisher/polisherScoring";
+import { calculatePolisherQuality, initialPolish, polishCoverage, polisherTuning } from "./polisher/polisherScoring";
 import { PRODUCT_RECT } from "./shared";
-import { calculateSorterQuality, createSortQueue, sorterTuning } from "./sorter/sorterScoring";
-import { calculateStamperQuality, markerPosition } from "./stamper/stamperScoring";
+import { calculateSorterQuality, createSortQueue, sortPlan, sorterTuning } from "./sorter/sorterScoring";
+import { calculateStamperQuality, markerPosition, nearestTarget, stampPlan } from "./stamper/stamperScoring";
+import { machineVariants, pickVariant } from "./variants";
 
 const from: Point = { x: 200, y: 70 };
 const to: Point = { x: 200, y: 230 };
@@ -212,7 +215,7 @@ describe("paint booth scoring", () => {
     Array.from({ length: size }, (_, i) => (i < size * share ? thickness : 0));
 
   /** Sprays back and forth across the tile at a steady speed, 16 ms per frame. */
-  function sweep(speed: number, rowGap = 22) {
+  function sweep(speed: number, rowGap = 22, nozzle?: PaintNozzle) {
     const cells = new Float32Array(size);
     const { x, y, w, h } = PRODUCT_RECT;
     const step = (speed * 16) / 1000;
@@ -220,7 +223,7 @@ describe("paint booth scoring", () => {
     for (let py = y + 10; py <= y + h - 8; py += rowGap, row++) {
       for (let travelled = 0; travelled <= w - 16; travelled += step) {
         const px = row % 2 ? x + w - 8 - travelled : x + 8 + travelled;
-        depositPaint(cells, { x: px, y: py }, 16);
+        depositPaint(cells, { x: px, y: py }, 16, nozzle);
       }
     }
     return cells;
@@ -440,5 +443,162 @@ describe("assembler scoring", () => {
     expect(partAt(final, { x: part.tray.x + 5, y: part.tray.y }, [])?.id).toBe("head");
     expect(partAt(final, { x: part.tray.x + 5, y: part.tray.y }, ["head"])).toBeNull();
     expect(partAt(final, { x: 200, y: 292 }, [])).toBeNull();
+  });
+});
+
+describe("machine variants", () => {
+  it("always teaches with the basic variant", () => {
+    for (const id of Object.keys(machineVariants) as (keyof typeof machineVariants)[]) {
+      expect(pickVariant(id, "any-run", 0, 99, true)).toBe(machineVariants[id][0]);
+      expect(machineVariants[id][0].instruction).toBeNull();
+    }
+  });
+
+  it("is stable for a step and differs between steps and runs", () => {
+    expect(pickVariant("stamper", "run-a", 1, 20)).toBe(pickVariant("stamper", "run-a", 1, 20));
+    const seen = new Set(Array.from({ length: 200 }, (_, i) => pickVariant("stamper", `run-${i}`, 1, 20).id));
+    expect([...seen].sort()).toEqual(["double", "offset", "quick", "steady"]);
+  });
+
+  it("holds each variant back until its level", () => {
+    const at = (machine: keyof typeof machineVariants, level: number) =>
+      new Set(Array.from({ length: 300 }, (_, i) => pickVariant(machine, `run-${i}`, 0, level).id));
+    expect([...at("packager", 2)]).toEqual(["across"]);
+    expect(at("packager", 3).has("down")).toBe(true);
+    expect(at("packager", 6).has("cross")).toBe(false);
+    expect(at("packager", 7).has("cross")).toBe(true);
+    expect(at("stamper", 5).has("offset")).toBe(false);
+    expect(at("sorter", 11).has("three")).toBe(false);
+    expect(at("sorter", 12).has("three")).toBe(true);
+  });
+});
+
+describe("packager variants", () => {
+  it("lays one strip, or two for a cross", () => {
+    expect(tapeRuns("across")).toHaveLength(1);
+    expect(tapeRuns("down")).toHaveLength(1);
+    expect(tapeRuns("cross")).toHaveLength(2);
+    expect(tapeRuns("unknown")).toEqual(tapeRuns("across"));
+  });
+
+  it("scores a strip pulled straight down its own guide as Perfect", () => {
+    const [down] = tapeRuns("down");
+    const points = Array.from({ length: 41 }, (_, i) => ({
+      x: down.from.x,
+      y: down.from.y + ((down.to.y - down.from.y) * i) / 40,
+    }));
+    expect(calculatePackagerQuality({ points, ...down })).toBe(100);
+    // The same pull judged against the sideways guide is a miss.
+    expect(calculatePackagerQuality({ points, ...tapeRuns("across")[0] })).toBeLessThan(40);
+  });
+});
+
+describe("stamper variants", () => {
+  it("scores against wherever the mark is", () => {
+    expect(calculateStamperQuality(0.3, 0.3)).toBe(100);
+    expect(calculateStamperQuality(0.5, 0.3)).toBeLessThan(80);
+    expect(calculateStamperQuality(0.2, 0.3)).toBe(calculateStamperQuality(0.4, 0.3));
+  });
+
+  it("plans one mark, a moved mark, or two", () => {
+    expect(stampPlan("steady", "r")).toEqual({ periodMs: 1900, targets: [0.5] });
+    expect(stampPlan("quick", "r").periodMs).toBeLessThan(1900);
+    expect([0.3, 0.7]).toContain(stampPlan("offset", "r").targets[0]);
+    expect(stampPlan("offset", "r")).toEqual(stampPlan("offset", "r"));
+    expect(stampPlan("double", "r").targets).toEqual([0.3, 0.7]);
+  });
+
+  it("aims each press of a double at the nearest mark still open", () => {
+    expect(nearestTarget(0.35, [0.3, 0.7])).toBe(0.3);
+    expect(nearestTarget(0.6, [0.3, 0.7])).toBe(0.7);
+    expect(nearestTarget(0.35, [0.7])).toBe(0.7);
+  });
+});
+
+describe("polisher variants", () => {
+  it("starts fully dull by default", () => {
+    expect(polishCoverage(initialPolish("full", "run"))).toBe(0);
+  });
+
+  it("starts partly clean for patches and edges, the same way each time", () => {
+    for (const variant of ["patches", "edges"]) {
+      const start = polishCoverage(initialPolish(variant, "run-a"));
+      expect(start).toBeGreaterThan(0.2);
+      expect(start).toBeLessThan(0.9);
+      expect(initialPolish(variant, "run-a")).toEqual(initialPolish(variant, "run-a"));
+    }
+  });
+
+  it("still needs work, and still scores a finished surface as Perfect", () => {
+    const cells = initialPolish("patches", "run-b");
+    expect(polishCoverage(cells)).toBeLessThan(polisherTuning.releaseFinishCoverage);
+    cells.fill(1);
+    expect(calculatePolisherQuality({ cells, durationMs: 4000 })).toBe(100);
+  });
+});
+
+describe("paint booth nozzles", () => {
+  const size = paintBoothTuning.cols * paintBoothTuning.rows;
+  /** A steady back-and-forth at `speed` with rows `rowGap` apart, 16 ms per frame. */
+  function sweep(nozzle: PaintNozzle, speed: number, rowGap: number) {
+    const cells = new Float32Array(size);
+    const { x, y, w, h } = PRODUCT_RECT;
+    const step = (speed * 16) / 1000;
+    let row = 0;
+    for (let py = y + 8; py <= y + h - 6; py += rowGap, row++) {
+      for (let travelled = 0; travelled <= w - 12; travelled += step) {
+        depositPaint(cells, { x: row % 2 ? x + w - 6 - travelled : x + 6 + travelled, y: py }, 16, nozzle);
+      }
+    }
+    return calculatePaintBoothQuality({ cells, oversprayMs: 0 });
+  }
+
+  it("lets every nozzle reach Perfect with a sweep that suits it", () => {
+    expect(sweep(paintNozzles.standard, 150, 22)).toBe(100);
+    expect(sweep(paintNozzles.fine, 150, 14)).toBe(100);
+    expect(sweep(paintNozzles.wide, 150, 38)).toBe(100);
+  });
+
+  it("makes the nozzles behave differently", () => {
+    // The fine nozzle leaves gaps at the standard spacing; the wide one pools at it.
+    expect(sweep(paintNozzles.fine, 150, 30)).toBeLessThan(90);
+    expect(sweep(paintNozzles.wide, 110, 16)).toBeLessThan(90);
+  });
+});
+
+describe("sorter variants", () => {
+  it("adds a third bin and a sixth piece", () => {
+    expect(sortPlan("two").bins.map((b) => b.id)).toEqual(["round", "square"]);
+    const three = sortPlan("three");
+    expect(three.bins.map((b) => b.id)).toEqual(["round", "hex", "square"]);
+    expect(three.count).toBe(sorterTuning.itemCount + 1);
+  });
+
+  it("sends at least one piece to every bin", () => {
+    const { bins, count } = sortPlan("three");
+    const ids = bins.map((b) => b.id);
+    for (let i = 0; i < 200; i++) {
+      const queue = createSortQueue(`run-${i}`, count, ids);
+      expect(queue).toHaveLength(count);
+      expect(new Set(queue).size).toBe(3);
+    }
+  });
+});
+
+describe("assembler tray shuffle", () => {
+  it("deals the same parts into the same tray spots, in a run-specific order", () => {
+    for (let step = 0; step < 5; step++) {
+      const base = stageForStep(step);
+      const shuffled = stageForStep(step, "run-a");
+      expect(shuffled.sockets).toEqual(base.sockets);
+      expect(shuffled.parts.map((p) => p.id)).toEqual(base.parts.map((p) => p.id));
+      const spots = (st: typeof base) => st.parts.map((p) => `${p.tray.x},${p.tray.y}`).sort();
+      expect(spots(shuffled)).toEqual(spots(base));
+      expect(stageForStep(step, "run-a")).toEqual(shuffled);
+    }
+    const orders = new Set(
+      Array.from({ length: 30 }, (_, i) => stageForStep(0, `run-${i}`).parts.map((p) => p.tray.x).join(",")),
+    );
+    expect(orders.size).toBeGreaterThan(3);
   });
 });

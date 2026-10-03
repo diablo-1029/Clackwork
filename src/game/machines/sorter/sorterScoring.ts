@@ -13,7 +13,7 @@ export const sorterTuning = {
   speedWeight: 0.2,
 } as const;
 
-export type SortShapeId = "round" | "square";
+export type SortShapeId = "round" | "hex" | "square";
 
 export interface SortShape {
   id: SortShapeId;
@@ -26,15 +26,21 @@ export interface SortShape {
 }
 
 /**
- * One bin per shape, left to right. Shape is the cue: the gems share a colour,
- * so sorting never depends on telling colours apart.
+ * Shape is the cue: the pieces share a colour, so sorting never depends on
+ * telling colours apart.
  */
-export const sortShapes: SortShape[] = [
+const allSortShapes: SortShape[] = [
   {
     id: "round",
     label: "Round",
     path: "M 0 -20 A 20 20 0 1 1 0 20 A 20 20 0 1 1 0 -20 Z",
     facets: "M 0 -11 L 9.5 -5.5 L 9.5 5.5 L 0 11 L -9.5 5.5 L -9.5 -5.5 Z M 0 -11 L 0 -20 M 9.5 5.5 L 17.3 10 M -9.5 5.5 L -17.3 10",
+  },
+  {
+    id: "hex",
+    label: "Hex",
+    path: "M 0 -21 L 18.2 -10.5 L 18.2 10.5 L 0 21 L -18.2 10.5 L -18.2 -10.5 Z",
+    facets: "M -9 -9 L 9 -9 L 14 0 L 9 9 L -9 9 L -14 0 Z M -9 -9 L 0 -21 L 9 -9 M -9 9 L 0 21 L 9 9",
   },
   {
     id: "square",
@@ -44,11 +50,27 @@ export const sortShapes: SortShape[] = [
   },
 ];
 
-/** The order gems arrive in: stable for a run, mixed, and never one shape only. */
-export function createSortQueue(runId: string, count: number = sorterTuning.itemCount): SortShapeId[] {
+const shapeById = (id: SortShapeId) => allSortShapes.find((shape) => shape.id === id)!;
+
+/** The usual two bins, left to right. */
+export const sortShapes: SortShape[] = [shapeById("round"), shapeById("square")];
+
+/** The bins a Sorter variant uses, left to right, and how many pieces arrive. */
+export function sortPlan(variant: string): { bins: SortShape[]; count: number } {
+  if (variant === "three") {
+    return { bins: [shapeById("round"), shapeById("hex"), shapeById("square")], count: sorterTuning.itemCount + 1 };
+  }
+  return { bins: sortShapes, count: sorterTuning.itemCount };
+}
+
+/** The order pieces arrive in: stable for a run, mixed, and with every bin's shape appearing. */
+export function createSortQueue(
+  runId: string,
+  count: number = sorterTuning.itemCount,
+  ids: SortShapeId[] = sortShapes.map((shape) => shape.id),
+): SortShapeId[] {
   const random = seededRandom(hashString(`sort:${runId}`));
-  const ids = sortShapes.map((shape) => shape.id);
-  const other = (id: SortShapeId) => ids.find((candidate) => candidate !== id) ?? id;
+  const other = (id: SortShapeId) => ids[(ids.indexOf(id) + 1) % ids.length];
   const queue: SortShapeId[] = [];
 
   for (let i = 0; i < count; i++) {
@@ -58,8 +80,14 @@ export function createSortQueue(runId: string, count: number = sorterTuning.item
     queue.push(next);
   }
 
-  // Short queues can still come out all one shape; make sure there is something to sort.
-  if (count > 1 && queue.every((id) => id === queue[0])) queue[count - 1] = other(queue[0]);
+  // Every bin should get at least one piece when there are enough to go round:
+  // swap a missing shape in for one that appears more than once.
+  if (count >= ids.length) {
+    for (const missing of ids.filter((id) => !queue.includes(id))) {
+      const spare = queue.findIndex((id, index) => queue.indexOf(id) !== index || queue.lastIndexOf(id) !== index);
+      if (spare >= 0) queue[spare] = missing;
+    }
+  }
   return queue;
 }
 

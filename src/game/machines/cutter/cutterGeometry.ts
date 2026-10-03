@@ -12,7 +12,9 @@ export type CutPatternId =
   | "diagonalLeft"
   | "horizontal"
   | "doubleVertical"
-  | "doubleHorizontal";
+  | "doubleHorizontal"
+  | "doubleDiagonal"
+  | "tripleVertical";
 
 export interface CutPattern {
   id: CutPatternId;
@@ -49,6 +51,8 @@ export const cutPatterns: CutPattern[] = [
   { id: "horizontal", segments: [across(cy)], minLevel: 1 },
   { id: "doubleVertical", segments: [down(cx - 34), down(cx + 34)], minLevel: 2 },
   { id: "doubleHorizontal", segments: [across(cy + 22), across(cy - 22)], minLevel: 2 },
+  { id: "doubleDiagonal", segments: [down(cx - 32, 30), down(cx + 32, 30)], minLevel: 6 },
+  { id: "tripleVertical", segments: [down(cx - 50), down(cx), down(cx + 50)], minLevel: 9 },
 ];
 
 export function getCutPattern(id: unknown): CutPattern | undefined {

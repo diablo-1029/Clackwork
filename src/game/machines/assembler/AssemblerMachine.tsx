@@ -21,6 +21,7 @@ import {
 const translate = (at: Point) => `translate(${at.x.toFixed(1)}px, ${at.y.toFixed(1)}px)`;
 
 export function AssemblerMachine({
+  runId,
   material,
   isGolden,
   look,
@@ -32,7 +33,7 @@ export function AssemblerMachine({
   burst,
 }: MachineProps) {
   // Which section this visit builds: the product's chain visits the Assembler once per step.
-  const [stage] = useState(() => stageForStep(step));
+  const [stage] = useState(() => stageForStep(step, runId));
   /** Which socket each placed part sits in. */
   const [placed, setPlaced] = useState<Record<string, string>>({});
   /** The part in the player's hand, so its sockets can light up and it can be drawn on top. */

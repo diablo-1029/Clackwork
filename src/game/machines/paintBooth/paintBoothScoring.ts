@@ -5,10 +5,6 @@ export const paintBoothTuning = {
   /** Grid resolution used to track how thick the paint is on each patch of the tile. */
   cols: 20,
   rows: 13,
-  /** Spray radius, in stage units. */
-  nozzleRadius: 28,
-  /** Thickness laid down per millisecond directly under the nozzle. */
-  flowPerMs: 0.0035,
   /** A cell counts as painted from this thickness upwards. */
   coveredThreshold: 0.45,
   /** Above this the paint has pooled: the spray lingered too long. */
@@ -34,6 +30,27 @@ export const paintBoothTuning = {
   oversprayWeight: 0.15,
 } as const;
 
+export interface PaintNozzle {
+  /** Spray radius, in stage units. */
+  radius: number;
+  /** Thickness laid down per millisecond directly under the nozzle. */
+  flow: number;
+}
+
+/**
+ * The fine nozzle covers less per pass, so it takes more of them; the wide one
+ * covers the tile in a few passes but pools quickly if those passes overlap or dawdle.
+ */
+export const paintNozzles: Record<"standard" | "fine" | "wide", PaintNozzle> = {
+  standard: { radius: 28, flow: 0.0035 },
+  fine: { radius: 20, flow: 0.0042 },
+  wide: { radius: 40, flow: 0.003 },
+};
+
+export function paintNozzle(variant: string): PaintNozzle {
+  return variant === "fine" || variant === "wide" ? paintNozzles[variant] : paintNozzles.standard;
+}
+
 export const PAINT_CELL = {
   w: PRODUCT_RECT.w / paintBoothTuning.cols,
   h: PRODUCT_RECT.h / paintBoothTuning.rows,
@@ -53,10 +70,15 @@ export function paintCellCenter(index: number): Point {
  * Paint flows for as long as the nozzle is held, moving or not, which is what
  * makes lingering pool. Returns true when the nozzle was off the tile.
  */
-export function depositPaint(cells: Float32Array | number[], at: Point, dtMs: number): boolean {
+export function depositPaint(
+  cells: Float32Array | number[],
+  at: Point,
+  dtMs: number,
+  nozzle: PaintNozzle = paintNozzles.standard,
+): boolean {
   const t = paintBoothTuning;
   const { x, y, w, h } = PRODUCT_RECT;
-  const reach = t.nozzleRadius;
+  const reach = nozzle.radius;
 
   const minCol = Math.max(0, Math.floor((at.x - reach - x) / PAINT_CELL.w));
   const maxCol = Math.min(t.cols - 1, Math.floor((at.x + reach - x) / PAINT_CELL.w));
@@ -70,7 +92,7 @@ export function depositPaint(cells: Float32Array | number[], at: Point, dtMs: nu
       const d = Math.hypot(center.x - at.x, center.y - at.y);
       if (d > reach) continue;
       const falloff = 1 - (d / reach) ** 2;
-      cells[index] = Math.min(t.maxThickness, cells[index] + falloff * t.flowPerMs * dtMs);
+      cells[index] = Math.min(t.maxThickness, cells[index] + falloff * nozzle.flow * dtMs);
     }
   }
 

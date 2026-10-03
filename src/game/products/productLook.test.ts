@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getCutPattern } from "@/game/machines/cutter/cutterGeometry";
 import type { MachineResult } from "@/types/game";
 import { products } from "@/config/products";
-import { deriveProductLook, finishedLook, stampMark } from "./productLook";
+import { deriveProductLook, finishedLook, stampMark, stampOffset } from "./productLook";
 
 const result = (machineId: MachineResult["machineId"], quality: number, metadata?: Record<string, unknown>): MachineResult => ({
   machineId,
@@ -27,23 +27,39 @@ describe("product look", () => {
     expect(deriveProductLook([result("cutter", 90, { pattern: "doubleVertical" })]).cuts).toHaveLength(2);
   });
 
+  const press = (position: number, target = 0.5) => ({ presses: [{ position, target }] });
+
   it("places the imprint where the press landed", () => {
-    const centred = deriveProductLook([result("stamper", 100, { markerPosition: 0.5 })]).stamp;
-    const late = deriveProductLook([result("stamper", 60, { markerPosition: 0.8 })]).stamp;
-    expect(centred).toEqual({ shift: 0, strength: 0.95 });
+    const centred = deriveProductLook([result("stamper", 100, press(0.5))]).stamps?.[0];
+    const late = deriveProductLook([result("stamper", 60, press(0.8))]).stamps?.[0];
+    expect(centred).toEqual({ shift: 0, strength: 0.95, scale: 1 });
     expect(late!.shift).toBeGreaterThan(0);
     expect(late!.strength).toBeLessThan(centred!.strength);
     expect(stampMark(0.2, 60).shift).toBeCloseTo(-late!.shift);
   });
 
+  it("puts an off-centre mark where it was aimed, and keeps both marks of a double press", () => {
+    const left = deriveProductLook([result("stamper", 100, press(0.3, 0.3))]).stamps![0];
+    expect(left.shift).toBeCloseTo(stampOffset(0.3));
+    expect(left.shift).toBeLessThan(0);
+
+    const both = deriveProductLook([
+      result("stamper", 100, { presses: [{ position: 0.3, target: 0.3 }, { position: 0.7, target: 0.7 }] }),
+    ]).stamps!;
+    expect(both).toHaveLength(2);
+    expect(both[0].shift).toBeCloseTo(-both[1].shift);
+    // Two marks share the face, so each is smaller.
+    expect(both.every((mark) => mark.scale < 1)).toBe(true);
+  });
+
   it("accumulates across the whole chain", () => {
     const look = deriveProductLook([
       result("cutter", 100, { pattern: "vertical" }),
-      result("stamper", 100, { markerPosition: 0.5 }),
+      result("stamper", 100, { presses: [{ position: 0.5, target: 0.5 }] }),
       result("polisher", 100),
     ]);
     expect(look.cuts).toHaveLength(1);
-    expect(look.stamp).toBeDefined();
+    expect(look.stamps).toHaveLength(1);
     expect(look.polished).toBe(true);
   });
 
@@ -75,7 +91,8 @@ describe("product look", () => {
     const look = deriveProductLook([
       result("cutter", 80),
       result("cutter", 80, { pattern: "zigzag" }),
-      result("stamper", 80, { markerPosition: "middle" }),
+      result("stamper", 80, { presses: [{ position: "middle" }] }),
+      result("stamper", 80, { presses: "none" }),
       result("packager", 80),
     ]);
     expect(look).toEqual({ cuts: [], polished: false });
