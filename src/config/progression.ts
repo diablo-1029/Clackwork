@@ -32,7 +32,7 @@ export const pacing = {
   /** Phase timings in ms. */
   orderIntroMs: 1100,
   orderIntroFirstMs: 1900,
-  machineEnterMs: 320,
+  machineEnterMs: 200,
   machineResolveMs: 450,
   resultFeedbackMs: 800,
   machineExitMs: 300,

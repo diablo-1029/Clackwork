@@ -45,6 +45,7 @@ const emptySession = (): DragSession => ({
  */
 export function useTraceDrag(elementRef: RefObject<Element | null>, options: TraceDragOptions): void {
   const latest = useRef(options);
+  const startPending = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     latest.current = options;
@@ -56,6 +57,28 @@ export function useTraceDrag(elementRef: RefObject<Element | null>, options: Tra
 
     let session = emptySession();
     let frame: number | null = null;
+    // A press that landed just before input opened (the machine was still arriving).
+    let pending: { pointerId: number; point: Point } | null = null;
+
+    const capture = (pointerId: number) => {
+      try {
+        element.setPointerCapture(pointerId);
+      } catch {
+        // Capture is a nicety; the drag still works without it.
+      }
+    };
+
+    const begin = (pointerId: number, point: Point) => {
+      session = {
+        active: true,
+        pointerId,
+        start: point,
+        current: point,
+        points: [point],
+        startedAt: performance.now(),
+      };
+      latest.current.onStart?.(session);
+    };
 
     /** Ends the current drag without reporting it. */
     const reset = () => {
@@ -85,27 +108,35 @@ export function useTraceDrag(elementRef: RefObject<Element | null>, options: Tra
       if (event.pointerType === "mouse" && event.button !== 0) return;
 
       const point = toStagePoint(event, element);
-      if (!point || (opts.canStart && !opts.canStart(point))) return;
+      if (!point) return;
+
+      // Too early: remember the press so the drag can start the moment input opens.
+      if (!opts.enabled) {
+        event.preventDefault();
+        capture(event.pointerId);
+        pending = { pointerId: event.pointerId, point };
+        return;
+      }
+      if (opts.canStart && !opts.canStart(point)) return;
 
       event.preventDefault();
-      try {
-        element.setPointerCapture(event.pointerId);
-      } catch {
-        // Capture is a nicety; the drag still works without it.
-      }
+      capture(event.pointerId);
+      begin(event.pointerId, point);
+    };
 
-      session = {
-        active: true,
-        pointerId: event.pointerId,
-        start: point,
-        current: point,
-        points: [point],
-        startedAt: performance.now(),
-      };
-      opts.onStart?.(session);
+    startPending.current = () => {
+      if (!pending || session.active || !latest.current.enabled) return;
+      const { pointerId, point } = pending;
+      pending = null;
+      const canStart = latest.current.canStart;
+      if (!canStart || canStart(point)) begin(pointerId, point);
     };
 
     const onPointerMove = (event: PointerEvent) => {
+      if (pending && event.pointerId === pending.pointerId) {
+        pending.point = toStagePoint(event, element) ?? pending.point;
+        return;
+      }
       if (!session.active || event.pointerId !== session.pointerId) return;
       const point = toStagePoint(event, element);
       if (!point) return;
@@ -128,6 +159,7 @@ export function useTraceDrag(elementRef: RefObject<Element | null>, options: Tra
     };
 
     const onPointerUp = (event: PointerEvent) => {
+      if (pending?.pointerId === event.pointerId) pending = null;
       if (!session.active || event.pointerId !== session.pointerId) return;
       const snapshot = session;
       reset();
@@ -135,6 +167,7 @@ export function useTraceDrag(elementRef: RefObject<Element | null>, options: Tra
     };
 
     const onPointerCancel = (event: PointerEvent) => {
+      if (pending?.pointerId === event.pointerId) pending = null;
       if (event.pointerId === session.pointerId) interrupt();
     };
 
@@ -160,7 +193,14 @@ export function useTraceDrag(elementRef: RefObject<Element | null>, options: Tra
       listen.removeEventListener("lostpointercapture", onPointerCancel);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", interrupt);
+      startPending.current = null;
+      pending = null;
       reset();
     };
   }, [elementRef]);
+
+  const { enabled } = options;
+  useEffect(() => {
+    if (enabled) startPending.current?.();
+  }, [enabled]);
 }

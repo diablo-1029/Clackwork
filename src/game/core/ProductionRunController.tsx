@@ -182,9 +182,12 @@ export function ProductionRunController() {
             <motion.div
               key={`${run.id}-${run.currentMachineIndex}`}
               className="sf-machine-box"
-              initial={{ x: "45%", opacity: 0 }}
+              // A short arrival so the machine is under the finger almost at once.
+              initial={{ x: "16%", opacity: 0 }}
               animate={phase === "MACHINE_EXIT" ? { x: "-45%", opacity: 0 } : { x: 0, opacity: 1 }}
-              transition={{ duration: 0.3, ease: phase === "MACHINE_EXIT" ? "easeIn" : "easeOut" }}
+              transition={
+                phase === "MACHINE_EXIT" ? { duration: 0.3, ease: "easeIn" } : { duration: 0.2, ease: "easeOut" }
+              }
             >
               <MachineStage
                 machineId={machineId}
