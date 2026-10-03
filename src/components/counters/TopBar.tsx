@@ -123,7 +123,7 @@ function SoundToggle() {
 
 export function TopBar() {
   return (
-    <header className="flex items-center gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 sm:gap-3 sm:px-4">
+    <header className="flex items-center gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 sm:gap-3 sm:px-4 lg:px-6">
       <h1 className="hidden shrink-0 text-lg font-black tracking-tight text-brand-deep md:block">
         Clackwork
       </h1>

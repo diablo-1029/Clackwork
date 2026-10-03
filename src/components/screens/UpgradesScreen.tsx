@@ -24,7 +24,7 @@ export function UpgradesScreen() {
 
   return (
     <ScreenFrame title="Upgrades" intro="Spend coins to make every order worth more.">
-      <ul className="grid gap-3 sm:grid-cols-2">
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {upgradeList.map((upgrade) => {
           const current = owned[upgrade.id] ?? 0;
           const check = canPurchaseUpgrade(upgrade.id, current, coins, level);

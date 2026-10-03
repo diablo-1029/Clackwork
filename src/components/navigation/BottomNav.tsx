@@ -29,7 +29,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="flex justify-center gap-1 px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="flex justify-center gap-1 px-2 pt-1.5 lg:px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
       {items.map((item) => {
         const current = item.screen === screen;

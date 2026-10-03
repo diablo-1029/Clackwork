@@ -15,7 +15,7 @@ export function ProductsScreen() {
 
   return (
     <ScreenFrame title="Products" intro="Everything your factory makes, and the machines that make it.">
-      <ul className="grid gap-3 sm:grid-cols-2">
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {productList.map((product) => {
           const unlocked = unlockedProducts.includes(product.id);
           const sequence = resolveMachineSequence(product, unlockedMachines);
@@ -58,7 +58,7 @@ export function ProductsScreen() {
       </ul>
 
       <h3 className="mt-6 text-lg font-black">Machines</h3>
-      <ul className="mt-2 grid gap-3 sm:grid-cols-2">
+      <ul className="mt-2 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {machineList.map((machine) => {
           const unlocked = unlockedMachines.includes(machine.id);
           return (

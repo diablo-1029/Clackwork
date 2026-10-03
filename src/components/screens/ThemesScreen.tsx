@@ -20,7 +20,7 @@ export function ThemesScreen() {
 
   return (
     <ScreenFrame title="Themes" intro="Restyle the factory floor. Menus follow your light or dark setting instead.">
-      <ul className="grid gap-3 sm:grid-cols-2">
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {themeList.map((theme) => {
           const isOwned = owned.includes(theme.id);
           const isSelected = selected === theme.id;

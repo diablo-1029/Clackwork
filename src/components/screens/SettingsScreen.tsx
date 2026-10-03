@@ -104,7 +104,7 @@ export function SettingsScreen() {
   const { audio: sound } = settings;
 
   return (
-    <ScreenFrame title="Settings">
+    <ScreenFrame title="Settings" narrow>
       <h3 className="text-xs font-black tracking-widest text-muted uppercase">Sound</h3>
       <Row label="Sound">
         <Toggle

@@ -76,12 +76,12 @@ export function GameShell() {
   return (
     <MotionConfig reducedMotion={reducedMotion ? "always" : "never"}>
       <div
-        className="mx-auto flex h-dvh w-full max-w-5xl flex-col overflow-hidden"
+        className="flex h-dvh w-full flex-col overflow-hidden"
         data-reduced-motion={reducedMotion}
       >
         <TopBar />
 
-        <main className="min-h-0 flex-1 px-2 sm:px-4">
+        <main className="min-h-0 flex-1 px-2 sm:px-4 lg:px-6">
           {!hydrated ? (
             <div className="h-full rounded-3xl bg-surface-2" aria-busy="true" aria-label="Loading your factory" />
           ) : (

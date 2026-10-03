@@ -188,7 +188,7 @@ export function ProductionRunController() {
           {phase !== "ORDER_INTRO" && <OrderValueChip value={orderValue} />}
         </div>
 
-        <div className="sf-machine-slot absolute inset-x-2 top-11 bottom-[4.75rem] flex items-center justify-center sm:inset-x-4">
+        <div className="sf-machine-slot absolute inset-x-2 top-11 bottom-[4.75rem] flex items-center justify-center sm:inset-x-4 lg:bottom-[4.25rem]">
           {machineVisible && (
             <motion.div
               key={`${run.id}-${run.currentMachineIndex}`}
