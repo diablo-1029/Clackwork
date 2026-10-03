@@ -11,6 +11,7 @@ import {
 } from "./paintBooth/paintBoothScoring";
 import { calculatePolisherQuality, polisherTuning } from "./polisher/polisherScoring";
 import { PRODUCT_RECT } from "./shared";
+import { calculateSorterQuality, createSortQueue, sorterTuning } from "./sorter/sorterScoring";
 import { calculateStamperQuality, markerPosition } from "./stamper/stamperScoring";
 
 const from: Point = { x: 200, y: 70 };
@@ -273,5 +274,43 @@ describe("paint booth scoring", () => {
     expect(depositPaint(cells, { x: PRODUCT_RECT.x + 20, y: PRODUCT_RECT.y + 20 }, 16)).toBe(false);
     expect(depositPaint(cells, { x: PRODUCT_RECT.x - 3, y: PRODUCT_RECT.y + 20 }, 16)).toBe(false);
     expect(depositPaint(cells, { x: PRODUCT_RECT.x - 30, y: PRODUCT_RECT.y + 20 }, 16)).toBe(true);
+  });
+});
+
+describe("sorter scoring", () => {
+  const picks = (correct: boolean[], reactionMs = 800) => correct.map((c) => ({ correct: c, reactionMs }));
+
+  it("scores every gem in the right bin at a relaxed pace as Perfect", () => {
+    expect(calculateSorterQuality(picks([true, true, true, true, true]))).toBe(100);
+    expect(calculateSorterQuality(picks([true, true, true, true, true], 1500))).toBe(100);
+  });
+
+  it("caps one wrong bin out of five at 84", () => {
+    expect(calculateSorterQuality(picks([true, true, false, true, true]))).toBe(84);
+  });
+
+  it("scores all wrong low", () => {
+    expect(calculateSorterQuality(picks([false, false, false, false, false]))).toBe(20);
+    expect(calculateSorterQuality([])).toBe(0);
+  });
+
+  it("only ever costs the speed share for taking your time", () => {
+    expect(calculateSorterQuality(picks([true, true, true, true, true], 60_000))).toBe(80);
+    expect(calculateSorterQuality(picks([true, true, true, true, true], 2750))).toBe(90);
+  });
+
+  it("builds a stable, mixed queue for each run", () => {
+    expect(createSortQueue("run-a")).toEqual(createSortQueue("run-a"));
+    for (let i = 0; i < 200; i++) {
+      const queue = createSortQueue(`run-${i}`);
+      expect(queue).toHaveLength(sorterTuning.itemCount);
+      expect(new Set(queue).size).toBe(2);
+      let run = 1;
+      for (let j = 1; j < queue.length; j++) {
+        run = queue[j] === queue[j - 1] ? run + 1 : 1;
+        expect(run).toBeLessThanOrEqual(sorterTuning.maxRun);
+      }
+    }
+    expect(new Set(createSortQueue("short", 2)).size).toBe(2);
   });
 });

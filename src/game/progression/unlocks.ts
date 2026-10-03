@@ -5,9 +5,9 @@ import { themeList } from "@/config/themes";
 import { upgradeList } from "@/config/upgrades";
 import type { MachineId, ProductDefinition, ProductId } from "@/types/game";
 
-/** A product can only be produced when every machine in its chain is playable. */
+/** A product can only be produced when it is released and every machine in its chain is playable. */
 export function isProductPlayable(product: ProductDefinition): boolean {
-  return product.machineSequence.every((id) => machines[id]?.implemented);
+  return product.released !== false && product.machineSequence.every((id) => machines[id]?.implemented);
 }
 
 export function machinesUnlockedAt(level: number): MachineId[] {

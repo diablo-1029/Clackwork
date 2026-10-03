@@ -272,6 +272,29 @@ describe("ceramic coaster", () => {
   });
 });
 
+describe("crystal", () => {
+  it("arrives as the next order at level 10 and runs through all four machines", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 10 });
+    useProgressionStore.getState().syncUnlocks(10);
+    useProgressionStore.getState().setOnboarding("hasSeenGoldenIntro");
+    useUiStore.getState().queueProducts(["crystal"]);
+
+    const order = createOrder();
+    expect(order?.productId).toBe("crystal");
+    expect(order?.machineSequence).toEqual(["cutter", "polisher", "sorter", "packager"]);
+
+    run().dispatch("INTRO_DONE");
+    order!.machineSequence.forEach(() => playMachine(100));
+    const summary = finishProduct();
+
+    expect(run().run?.results.map((r) => r.machineId)).toEqual(order!.machineSequence);
+    // 45 x 1.30 (Perfect) x 1.05 (streak of 4) = 61.4, rounded to 61
+    expect(summary).toMatchObject({ productId: "crystal", quality: 100, coins: 61 });
+    expect(finishProduct()).toBeNull();
+    expect(player().coins).toBe(61);
+  });
+});
+
 describe("purchases", () => {
   it("is atomic and never leaves negative coins", () => {
     usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 2, coins: 60 });

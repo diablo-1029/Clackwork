@@ -50,6 +50,11 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
   const polish = look?.polished ? 0.35 : 0;
   const shine = Math.min(1, (isGolden ? 0.85 : profile.shineIntensity) + richness * 0.3 + polish);
   const grain = profile.colorTreatment === "grain" && !isGolden;
+  const facet = profile.colorTreatment === "facet";
+  // Corners of the outer face and of the flat "table" in the middle of a cut stone.
+  const inset = { x: w * 0.2, y: h * 0.24 };
+  const [ox1, oy1, ox2, oy2] = [x, y, x + w, y + h];
+  const [ix1, iy1, ix2, iy2] = [x + inset.x, y + inset.y, x + w - inset.x, y + h - inset.y];
   // Seams are recorded where the Cutter made them; map that space onto this rect.
   const seamTransform = `translate(${x} ${y}) scale(${w / PRODUCT_RECT.w} ${h / PRODUCT_RECT.h}) translate(${-PRODUCT_RECT.x} ${-PRODUCT_RECT.y})`;
 
@@ -102,7 +107,24 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
 
         <rect x={x + w * 0.05} y={y + h * 0.06} width={w * 0.9} height={h * 0.34} rx={r * 0.7} fill={`url(#${id}-gloss)`} />
 
-        {!grain && (
+        {facet && (
+          <g>
+            <polygon points={`${ox1},${oy1} ${ox2},${oy1} ${ix2},${iy1} ${ix1},${iy1}`} fill="#ffffff" fillOpacity="0.3" />
+            <polygon points={`${ox1},${oy1} ${ix1},${iy1} ${ix1},${iy2} ${ox1},${oy2}`} fill="#ffffff" fillOpacity="0.12" />
+            <polygon points={`${ox2},${oy1} ${ox2},${oy2} ${ix2},${iy2} ${ix2},${iy1}`} fill="#000000" fillOpacity="0.07" />
+            <polygon points={`${ox1},${oy2} ${ix1},${iy2} ${ix2},${iy2} ${ox2},${oy2}`} fill="#000000" fillOpacity="0.14" />
+            <path
+              d={`M ${ix1} ${iy1} H ${ix2} V ${iy2} H ${ix1} Z M ${ox1} ${oy1} L ${ix1} ${iy1} M ${ox2} ${oy1} L ${ix2} ${iy1} M ${ox2} ${oy2} L ${ix2} ${iy2} M ${ox1} ${oy2} L ${ix1} ${iy2}`}
+              fill="none"
+              stroke="#ffffff"
+              strokeOpacity="0.6"
+              strokeWidth={Math.max(1, h * 0.012)}
+              strokeLinejoin="round"
+            />
+          </g>
+        )}
+
+        {!grain && !facet && (
           <rect
             x={x + w * 0.07}
             y={y + h * 0.1}

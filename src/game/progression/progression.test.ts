@@ -3,6 +3,7 @@ import { products } from "@/config/products";
 import { applyXp, xpRequired } from "./levels";
 import {
   getUnlocksAtLevel,
+  isProductPlayable,
   machinesUnlockedAt,
   productsUnlockedAt,
   resolveMachineSequence,
@@ -54,9 +55,18 @@ describe("unlocks", () => {
     expect(getUnlocksAtLevel(8).map((u) => u.id).sort()).toEqual(["ceramicCoaster", "nightShift", "paintBooth"]);
   });
 
-  it("never unlocks products whose machines are not playable yet", () => {
-    // Crystal and Gold Ingot need the Sorter, which has no module.
-    expect(productsUnlockedAt(99).sort()).toEqual(["ceramicCoaster", "soapBar", "woodBlock"]);
+  it("unlocks the Sorter and Crystal together at level 10", () => {
+    expect(machinesUnlockedAt(9)).not.toContain("sorter");
+    expect(productsUnlockedAt(9)).not.toContain("crystal");
+    expect(machinesUnlockedAt(10)).toContain("sorter");
+    expect(productsUnlockedAt(10)).toContain("crystal");
+    expect(getUnlocksAtLevel(10).map((u) => u.id).sort()).toEqual(["crystal", "sorter", "sunsetShift"]);
+  });
+
+  it("keeps Gold Ingot locked until it is released", () => {
+    expect(isProductPlayable(products.goldIngot)).toBe(false);
+    expect(getUnlocksAtLevel(15).map((u) => u.id)).not.toContain("goldIngot");
+    expect(productsUnlockedAt(99).sort()).toEqual(["ceramicCoaster", "crystal", "soapBar", "woodBlock"]);
   });
 
   it("extends the Soap Bar chain once the Polisher is owned", () => {

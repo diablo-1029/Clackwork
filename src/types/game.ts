@@ -36,6 +36,8 @@ export type SoundKey =
   | "stampThunk"
   | "stampSoft"
   | "polishDone"
+  | "sortDrop"
+  | "sortMiss"
   | "tapeSnap"
   | "boxClose"
   | "rewardGood"
@@ -97,6 +99,8 @@ export interface ProductDefinition {
   machineSequence: MachineId[];
   /** Later variants win; used when a newly unlocked machine extends the chain. */
   sequenceVariants?: SequenceVariant[];
+  /** Set to false to keep a product locked even though every machine it needs exists. */
+  released?: boolean;
   /** Relative chance of being picked as the next order. */
   orderWeight: number;
   visualKey: string;

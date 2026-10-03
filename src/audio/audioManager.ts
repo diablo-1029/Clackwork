@@ -221,6 +221,15 @@ class AudioManager {
           this.chime(ch, [1047, 1568], 0.06, 0.28, 0.16);
           this.noise(ch, { filter: "highpass", freq: 5000, duration: 0.25, gain: 0.06 });
           break;
+        case "sortDrop":
+          // A glassy clink as a gem lands in the right bin.
+          this.tone(ch, { freq: 1760, duration: 0.14, gain: 0.2, type: "triangle" });
+          this.tone(ch, { freq: 2637, duration: 0.09, gain: 0.1, delay: 0.03 });
+          break;
+        case "sortMiss":
+          // Deliberately mild: a wrong bin is a small thing.
+          this.tone(ch, { freq: 170, slideTo: 110, duration: 0.13, gain: 0.26, type: "triangle" });
+          break;
         case "tapeSnap":
           this.noise(ch, { filter: "highpass", freq: 2600, duration: 0.05, gain: 0.6 });
           this.tone(ch, { freq: 1000, slideTo: 380, duration: 0.06, gain: 0.3, type: "triangle" });

@@ -77,13 +77,13 @@ export const machines: Record<MachineId, MachineDefinition> = {
     id: "sorter",
     name: "Sorter",
     description: "Routes each product to the right lane.",
-    instruction: "Send each product to its lane.",
-    unlockLevel: 16,
+    instruction: "Send each gem to its bin.",
+    unlockLevel: 10,
     estimatedDurationSeconds: 10,
     baseDifficulty: 3,
     icon: "sorter",
-    sfx: { resolve: "rewardGood" },
-    implemented: false,
+    sfx: { resolve: "sortDrop" },
+    implemented: true,
   },
 };
 
