@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useId, useRef, useState } from "react";
 import { audio } from "@/audio/audioManager";
-import { getMaterialColors } from "@/game/products/materialProfiles";
+import { getMaterialColors, materialProfiles } from "@/game/products/materialProfiles";
 import { STAGE, type MachineProps } from "../shared";
 import { calculateSorterQuality, createSortQueue, sortShapes, type SortPick, type SortShape } from "./sorterScoring";
 
@@ -15,20 +15,36 @@ const BIN_X = [46, 222] as const;
 /** How long a gem takes to fly into its bin before the next one arrives. */
 const FLIGHT_MS = 240;
 
-function Gem({ shape, colors }: { shape: SortShape; colors: ReturnType<typeof getMaterialColors> }) {
+interface PieceProps {
+  shape: SortShape;
+  colors: ReturnType<typeof getMaterialColors>;
+  /** Cut stones show facets; everything else is a smooth cast piece (a coin or a small bar). */
+  faceted: boolean;
+}
+
+function Piece({ shape, colors, faceted }: PieceProps) {
   const id = useId().replace(/:/g, "");
   return (
     <g>
       <defs>
-        <linearGradient id={`${id}-gem`} x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={`${id}-fill`} x1="0" y1="0" x2={faceted ? 1 : 0} y2="1">
           <stop offset="0" stopColor={colors.light} />
           <stop offset="0.6" stopColor={colors.base} />
           <stop offset="1" stopColor={colors.dark} />
         </linearGradient>
       </defs>
       <path d={shape.path} fill={colors.dark} transform="translate(0 3)" />
-      <path d={shape.path} fill={`url(#${id}-gem)`} stroke={colors.dark} strokeWidth="1.5" />
-      <path d={shape.facets} fill="#ffffff" fillOpacity="0.28" stroke="#ffffff" strokeOpacity="0.75" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d={shape.path} fill={`url(#${id}-fill)`} stroke={colors.dark} strokeWidth="1.5" />
+      {faceted ? (
+        <path d={shape.facets} fill="#ffffff" fillOpacity="0.28" stroke="#ffffff" strokeOpacity="0.75" strokeWidth="1.2" strokeLinejoin="round" />
+      ) : (
+        <>
+          {/* A raised inner face with a soft rim and a highlight along the top. */}
+          <path d={shape.path} transform="translate(0 1) scale(0.7)" fill={colors.dark} fillOpacity="0.35" />
+          <path d={shape.path} transform="scale(0.7)" fill={`url(#${id}-fill)`} stroke="#ffffff" strokeOpacity="0.5" strokeWidth="1.6" />
+          <path d="M -9 -8 Q 0 -12 9 -8" fill="none" stroke="#ffffff" strokeOpacity="0.8" strokeWidth="2.4" strokeLinecap="round" />
+        </>
+      )}
     </g>
   );
 }
@@ -183,7 +199,7 @@ export function SorterMachine({ runId, material, isGolden, active, onInteraction
             }
             transition={{ duration: flight === null ? 0.22 : FLIGHT_MS / 1000, ease: "easeOut" }}
           >
-            <Gem shape={shape} colors={colors} />
+            <Piece shape={shape} colors={colors} faceted={materialProfiles[material].colorTreatment === "facet"} />
           </motion.g>
         )}
 
