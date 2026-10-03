@@ -1,7 +1,14 @@
-# Satisfying Factory
+# Clackwork
 
-A browser game about short, tactile factory work: cut, stamp, polish and package products, one machine at a time.
-Frontend only, with progress saved in `localStorage`.
+Clackwork is a small browser game about short, tactile factory work. Each order moves through a chain of
+machines (Cutter, Stamper, Polisher, Packager), and every machine is a few seconds of hands-on input scored
+for quality. Better quality means more coins; coins buy upgrades; XP unlocks new machines, products and
+factory themes.
+
+- Four machines and two products, with Perfect streaks and rare Golden orders
+- Works with mouse, pen and touch
+- Light and dark modes, five factory themes, reduced-motion and sound settings
+- Frontend only: a static site with progress saved in the browser (`localStorage`)
 
 ## Run it
 

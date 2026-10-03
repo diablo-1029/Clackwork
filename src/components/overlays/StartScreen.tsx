@@ -36,7 +36,7 @@ export function StartScreen() {
 
       <div>
         <h2 className="text-3xl leading-tight font-black tracking-tight text-stage-ink sm:text-5xl">
-          SATISFYING FACTORY
+          CLACKWORK
         </h2>
         <p className="mt-3 flex items-center justify-center gap-4 text-sm font-extrabold text-stage-soft sm:text-base">
           <span>Factory Level {level}</span>

@@ -125,7 +125,7 @@ export function TopBar() {
   return (
     <header className="flex items-center gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 sm:gap-3 sm:px-4">
       <h1 className="hidden shrink-0 text-lg font-black tracking-tight text-brand-deep md:block">
-        Satisfying Factory
+        Clackwork
       </h1>
       <LevelMeter />
       <div className="flex-1 max-sm:hidden" />
