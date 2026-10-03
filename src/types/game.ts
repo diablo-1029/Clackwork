@@ -34,6 +34,7 @@ export type SoundKey =
   | "cutSliceWood"
   | "cutSliceSoap"
   | "stampThunk"
+  | "stampSoft"
   | "polishDone"
   | "tapeSnap"
   | "boxClose"

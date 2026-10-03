@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { audio } from "@/audio/audioManager";
-import { getMaterialColors } from "@/game/products/materialProfiles";
+import { getMaterialColors, materialProfiles } from "@/game/products/materialProfiles";
 import { stampMark } from "@/game/products/productLook";
 import { ProductBody, ProductImprint } from "@/game/products/ProductRenderer";
 import { STAGE, type MachineProps } from "../shared";
@@ -66,7 +66,7 @@ export function StamperMachine({
 
     timers.current.push(
       window.setTimeout(() => {
-        audio.play("stampThunk");
+        audio.play(materialProfiles[material].stampSoundKey);
         burst(
           { x: SLAB.x + SLAB.w / 2, y: SLAB.y + 6 },
           { count: quality >= 95 ? 12 : 7, colors: colors.particles, spread: 70 },

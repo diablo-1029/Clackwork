@@ -7,7 +7,10 @@ export interface MaterialProfileDefinition {
   cutResistance: number;
   cutParticleStyle: NonNullable<BurstOptions["shape"]>;
   cutSoundKey: SoundKey;
+  stampSoundKey: SoundKey;
   polishFriction: number;
+  /** 0–1 colour of the buffing sound: low is dull and dry, high is bright and glassy. */
+  polishTone: number;
   shineIntensity: number;
   /** Surface treatment drawn by ProductBody. */
   colorTreatment: "grain" | "gloss";
@@ -26,7 +29,9 @@ export const materialProfiles: Record<MaterialProfile, MaterialProfileDefinition
     cutResistance: 0.6,
     cutParticleStyle: "chip",
     cutSoundKey: "cutSliceWood",
+    stampSoundKey: "stampThunk",
     polishFriction: 0.7,
+    polishTone: 0.25,
     shineIntensity: 0.25,
     colorTreatment: "grain",
     colors: {
@@ -42,7 +47,9 @@ export const materialProfiles: Record<MaterialProfile, MaterialProfileDefinition
     cutResistance: 0.25,
     cutParticleStyle: "dot",
     cutSoundKey: "cutSliceSoap",
+    stampSoundKey: "stampSoft",
     polishFriction: 0.3,
+    polishTone: 0.8,
     shineIntensity: 0.6,
     colorTreatment: "gloss",
     colors: {
@@ -58,7 +65,9 @@ export const materialProfiles: Record<MaterialProfile, MaterialProfileDefinition
     cutResistance: 0.8,
     cutParticleStyle: "chip",
     cutSoundKey: "cutSliceWood",
+    stampSoundKey: "stampThunk",
     polishFriction: 0.5,
+    polishTone: 0.6,
     shineIntensity: 0.7,
     colorTreatment: "gloss",
     colors: {
@@ -74,7 +83,9 @@ export const materialProfiles: Record<MaterialProfile, MaterialProfileDefinition
     cutResistance: 0.9,
     cutParticleStyle: "spark",
     cutSoundKey: "cutSliceSoap",
+    stampSoundKey: "stampThunk",
     polishFriction: 0.4,
+    polishTone: 1,
     shineIntensity: 1,
     colorTreatment: "gloss",
     colors: {
@@ -90,7 +101,9 @@ export const materialProfiles: Record<MaterialProfile, MaterialProfileDefinition
     cutResistance: 0.7,
     cutParticleStyle: "spark",
     cutSoundKey: "cutSliceWood",
+    stampSoundKey: "stampThunk",
     polishFriction: 0.5,
+    polishTone: 0.5,
     shineIntensity: 0.9,
     colorTreatment: "gloss",
     colors: {

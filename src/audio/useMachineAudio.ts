@@ -7,12 +7,12 @@ import { audio, type LoopHandle } from "./audioManager";
  * while the player is interacting and is always torn down on unmount, so no
  * sound outlives its machine.
  */
-export function useLoopSound(key: LoopKey) {
+export function useLoopSound(key: LoopKey, tone?: number) {
   const handle = useRef<LoopHandle | null>(null);
 
   const start = useCallback(() => {
-    handle.current ??= audio.startLoop(key);
-  }, [key]);
+    handle.current ??= audio.startLoop(key, tone);
+  }, [key, tone]);
 
   const setIntensity = useCallback((value: number) => {
     handle.current?.setIntensity(value);

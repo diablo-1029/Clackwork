@@ -211,6 +211,12 @@ class AudioManager {
           this.noise(ch, { filter: "lowpass", freq: 500, q: 0.6, duration: 0.07, gain: 0.5 });
           this.tone(ch, { freq: 1300, duration: 0.03, gain: 0.14, delay: 0.16, type: "square" });
           break;
+        case "stampSoft":
+          // A press into something yielding: lower, rounder, no metallic edge.
+          this.tone(ch, { freq: 118, slideTo: 58, duration: 0.17, gain: 0.7 });
+          this.noise(ch, { filter: "lowpass", freq: 260, q: 0.5, duration: 0.1, gain: 0.32 });
+          this.tone(ch, { freq: 520, slideTo: 300, duration: 0.05, gain: 0.08, delay: 0.16 });
+          break;
         case "polishDone":
           this.chime(ch, [1047, 1568], 0.06, 0.28, 0.16);
           this.noise(ch, { filter: "highpass", freq: 5000, duration: 0.25, gain: 0.06 });
@@ -251,8 +257,11 @@ class AudioManager {
     }
   }
 
-  /** Starts a continuous machine sound. Always stop the handle when the machine leaves. */
-  startLoop(key: LoopKey): LoopHandle {
+  /**
+   * Starts a continuous machine sound. Always stop the handle when the machine leaves.
+   * `tone` (0–1) colours the sound for the material being worked: low is dull and dry, high is bright.
+   */
+  startLoop(key: LoopKey, tone = 0.5): LoopHandle {
     const ctx = this.ctx;
     const out = this.channels[loopChannels[key]];
     if (!ctx || !out || !this.noiseBuffer) return SILENT_LOOP;
@@ -285,12 +294,12 @@ class AudioManager {
         // Polisher: a soft motor hum under the friction noise.
         filter.type = "bandpass";
         filter.Q.value = 0.9;
-        baseFreq = 700;
+        baseFreq = 450 + tone * 500;
         freqRange = 500;
         peak = 0.16;
         const hum = ctx.createOscillator();
         hum.type = "sawtooth";
-        hum.frequency.value = 92;
+        hum.frequency.value = 76 + tone * 34;
         const humFilter = ctx.createBiquadFilter();
         humFilter.type = "lowpass";
         humFilter.frequency.value = 320;

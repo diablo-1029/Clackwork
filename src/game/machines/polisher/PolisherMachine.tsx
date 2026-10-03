@@ -50,11 +50,21 @@ export function PolisherMachine({
   const padRef = useRef<SVGGElement>(null);
   const cells = useRef(new Float32Array(cols * rows));
   const lastStamp = useRef<Point | null>(null);
-  const firstTouch = useRef(0);
+  const touched = useRef(false);
+  /** Time actually spent buffing; pauses between strokes do not count. */
+  const buffedMs = useRef(0);
+  const strokeStart = useRef(0);
   const lastSparkle = useRef(0);
   const finished = useRef(false);
-  const loop = useLoopSound("polishLoop");
-  const friction = materialProfiles[material].polishFriction;
+  const profile = materialProfiles[material];
+  const loop = useLoopSound("polishLoop", profile.polishTone);
+  const friction = profile.polishFriction;
+
+  const endStroke = () => {
+    if (strokeStart.current === 0) return;
+    buffedMs.current += performance.now() - strokeStart.current;
+    strokeStart.current = 0;
+  };
 
   /** Paints the dull film, then re-opens whatever has already been polished. */
   const redraw = useCallback(() => {
@@ -170,6 +180,7 @@ export function PolisherMachine({
   const finish = () => {
     if (finished.current) return;
     finished.current = true;
+    endStroke();
     loop.stop();
     setBuffing(false);
     setDone(true);
@@ -177,8 +188,8 @@ export function PolisherMachine({
     audio.play("polishDone");
     burst({ x: PRODUCT_RECT.x + PRODUCT_RECT.w / 2, y: PRODUCT_RECT.y + PRODUCT_RECT.h / 2 }, { count: 12, spread: 110, shape: "spark", colors: ["#ffffff", "var(--fx-accent-2)"] });
     onComplete({
-      quality: calculatePolisherQuality({ cells: cells.current, durationMs: performance.now() - firstTouch.current }),
-      durationMs: performance.now() - firstTouch.current,
+      quality: calculatePolisherQuality({ cells: cells.current, durationMs: buffedMs.current }),
+      durationMs: buffedMs.current,
     });
   };
 
@@ -212,10 +223,11 @@ export function PolisherMachine({
   useTraceDrag(surfaceRef, {
     enabled: active && !done,
     onStart: (session) => {
-      if (firstTouch.current === 0) {
-        firstTouch.current = performance.now();
+      if (!touched.current) {
+        touched.current = true;
         onInteractionStart();
       }
+      strokeStart.current = session.startedAt;
       lastStamp.current = null;
       setBuffing(true);
       loop.start();
@@ -223,12 +235,14 @@ export function PolisherMachine({
     },
     onFrame: polishAlong,
     onEnd: () => {
+      endStroke();
       loop.stop();
       setBuffing(false);
       // Lifting the pad is fine: polishing can continue with another stroke.
       if (polishCoverage(cells.current) >= polisherTuning.releaseFinishCoverage) finish();
     },
     onCancel: () => {
+      endStroke();
       loop.stop();
       setBuffing(false);
     },
