@@ -56,6 +56,10 @@ describe("product look", () => {
   it("keeps the parts the Assembler put on", () => {
     expect(deriveProductLook([result("assembler", 90)]).assembled).toBe(true);
     expect(deriveProductLook([result("paintBooth", 90, { glaze: "#ef5350" })]).assembled).toBeUndefined();
+    // The colour applied before assembly is what the finished robot wears.
+    expect(
+      deriveProductLook([result("paintBooth", 90, { glaze: "#29b6f6" }), result("assembler", 90)]),
+    ).toMatchObject({ assembled: true, paint: { color: "#29b6f6" } });
   });
 
   it("describes how each finished product looks, for icons", () => {

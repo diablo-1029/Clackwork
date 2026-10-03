@@ -3,7 +3,7 @@ import { PRODUCT_RECT } from "@/game/machines/shared";
 import type { MaterialProfile } from "@/types/game";
 import { getMaterialColors, materialProfiles } from "./materialProfiles";
 import type { ProductLook, StampMark } from "./productLook";
-import { RobotFace } from "./RobotParts";
+import { RobotFigure } from "./RobotParts";
 
 interface Rect {
   x: number;
@@ -47,6 +47,11 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
   const id = useId().replace(/:/g, "");
   const profile = materialProfiles[material];
   const colors = getMaterialColors(material, isGolden);
+  // Once assembled, the product is the whole robot rather than a block.
+  if (look?.assembled) {
+    return <RobotFigure color={look.paint?.color ?? colors.base} x={x} y={y} w={w} h={h} />;
+  }
+
   const depth = Math.max(3, h * 0.07);
   const polish = look?.polished ? 0.35 : 0;
   const shine = Math.min(1, (isGolden ? 0.85 : profile.shineIntensity) + richness * 0.3 + polish);
@@ -184,9 +189,6 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
         {look?.stamp && <ProductImprint rect={{ x, y, w, h }} mark={look.stamp} color={colors.dark} />}
       </g>
 
-      {/* Assembled parts sit on top of everything, and the antenna reaches past the top edge. */}
-      {look?.assembled && <RobotFace x={x} y={y} w={w} h={h} />}
-
       {isGolden &&
         [
           [0.16, 0.24, 1],
@@ -220,17 +222,19 @@ export function ProductIcon({
   /** Usually `finishedLook(product)`, so the icon shows the product as it leaves the factory. */
   look?: ProductLook;
 }) {
-  // Leave headroom for anything that sticks out above the body.
-  const body = look?.assembled ? { y: 12, h: 30 } : { y: 5, h: 34 };
+  // An assembled product is a standing figure: it gets a square icon and fills its height,
+  // rather than sitting small inside the landscape frame the block-shaped products use.
+  const standing = Boolean(look?.assembled);
+  const body = standing ? { x: 9, y: 1, w: 46, h: 62 } : { x: 6, y: 5, w: 52, h: 34 };
   return (
     <svg
       width={size}
-      height={size * 0.75}
-      viewBox="0 0 64 48"
+      height={standing ? size : size * 0.75}
+      viewBox={standing ? "0 0 64 64" : "0 0 64 48"}
       aria-hidden
       style={locked ? { filter: "grayscale(1)", opacity: 0.45 } : undefined}
     >
-      <ProductBody material={material} isGolden={isGolden} look={look} x={6} y={body.y} w={52} h={body.h} r={7} />
+      <ProductBody material={material} isGolden={isGolden} look={look} {...body} r={7} />
     </svg>
   );
 }

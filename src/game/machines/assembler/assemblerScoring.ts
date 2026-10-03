@@ -1,9 +1,9 @@
 import { clamp, distance, type Point } from "@/lib/math";
-import { PRODUCT_RECT } from "../shared";
+import { STAGE } from "../shared";
 
 export const assemblerTuning = {
   /** How close to a loose part a press must land to pick it up, in stage units. Generous for touch. */
-  grabRadius: 34,
+  grabRadius: 38,
   /** A part released within this distance of a socket snaps into it. */
   snapRadius: 26,
   /** Drops this close to the socket's center count as exact. */
@@ -14,7 +14,7 @@ export const assemblerTuning = {
   wrongDropCost: 1 / 3,
 } as const;
 
-export type RobotPartKind = "eye" | "mouth" | "antenna";
+export type RobotPartKind = "head" | "arm" | "leg";
 
 export interface RobotSocket {
   id: string;
@@ -29,24 +29,30 @@ export interface RobotPart {
   tray: Point;
 }
 
-const { x, y, w, h } = PRODUCT_RECT;
-const cx = x + w / 2;
-const TRAY_Y = y + h + 46;
+const cx = STAGE.w / 2;
 
-/** Where each part belongs on the robot head, in stage units. */
+/** The torso is already on the bench; every other part attaches around it. Stage units. */
+export const ROBOT_TORSO: Point = { x: cx, y: 124 };
+
+/** The space the finished robot occupies on the stage, used to fit it into boxes and icons. */
+export const ROBOT_BOUNDS = { x: 130, y: 6, w: 140, h: 226 } as const;
+
+/** Where each part belongs on the robot. */
 export const robotSockets: RobotSocket[] = [
-  { id: "eyeLeft", kind: "eye", at: { x: cx - 42, y: y + 44 } },
-  { id: "eyeRight", kind: "eye", at: { x: cx + 42, y: y + 44 } },
-  { id: "mouth", kind: "mouth", at: { x: cx, y: y + 96 } },
-  { id: "antenna", kind: "antenna", at: { x: cx, y: y - 14 } },
+  { id: "head", kind: "head", at: { x: cx, y: 54 } },
+  { id: "armLeft", kind: "arm", at: { x: cx - 53, y: 124 } },
+  { id: "armRight", kind: "arm", at: { x: cx + 53, y: 124 } },
+  { id: "legLeft", kind: "leg", at: { x: cx - 21, y: 197 } },
+  { id: "legRight", kind: "leg", at: { x: cx + 21, y: 197 } },
 ];
 
-/** The loose parts, mixed up along the tray. The two eyes are interchangeable. */
+/** The loose parts, split between a tray on each side. Arms are interchangeable, and so are legs. */
 export const robotParts: RobotPart[] = [
-  { id: "mouth", kind: "mouth", tray: { x: cx - 112, y: TRAY_Y } },
-  { id: "eyeA", kind: "eye", tray: { x: cx - 38, y: TRAY_Y } },
-  { id: "antenna", kind: "antenna", tray: { x: cx + 30, y: TRAY_Y - 4 } },
-  { id: "eyeB", kind: "eye", tray: { x: cx + 100, y: TRAY_Y } },
+  { id: "legA", kind: "leg", tray: { x: 56, y: 82 } },
+  { id: "armA", kind: "arm", tray: { x: 56, y: 196 } },
+  { id: "head", kind: "head", tray: { x: 344, y: 62 } },
+  { id: "armB", kind: "arm", tray: { x: 344, y: 150 } },
+  { id: "legB", kind: "leg", tray: { x: 344, y: 238 } },
 ];
 
 export type DropOutcome =
@@ -61,20 +67,21 @@ export function resolveDrop(partId: string, point: Point, filledSocketIds: reado
   const part = robotParts.find((p) => p.id === partId);
   if (!part) return { kind: "miss" };
 
-  let nearest: RobotSocket | null = null;
-  let nearestDistance = Infinity;
-  for (const socket of robotSockets) {
-    if (filledSocketIds.includes(socket.id)) continue;
-    const d = distance(socket.at, point);
-    if (d < nearestDistance) {
-      nearest = socket;
-      nearestDistance = d;
-    }
-  }
+  const free = robotSockets.filter((socket) => !filledSocketIds.includes(socket.id));
+  const nearestOf = (sockets: RobotSocket[]) =>
+    sockets.reduce<{ socket: RobotSocket; d: number } | null>((best, socket) => {
+      const d = distance(socket.at, point);
+      return !best || d < best.d ? { socket, d } : best;
+    }, null);
 
-  if (!nearest || nearestDistance > assemblerTuning.snapRadius) return { kind: "miss" };
-  if (nearest.kind !== part.kind) return { kind: "wrong", socketId: nearest.id };
-  return { kind: "placed", socketId: nearest.id, offset: nearestDistance };
+  // A socket of the part's own kind wins if it is in reach, so a leg dropped
+  // between the two leg sockets never counts as a mistake.
+  const own = nearestOf(free.filter((socket) => socket.kind === part.kind));
+  if (own && own.d <= assemblerTuning.snapRadius) return { kind: "placed", socketId: own.socket.id, offset: own.d };
+
+  const other = nearestOf(free);
+  if (other && other.d <= assemblerTuning.snapRadius) return { kind: "wrong", socketId: other.socket.id };
+  return { kind: "miss" };
 }
 
 /** The loose part a press at `point` would pick up, if any. */

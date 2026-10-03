@@ -59,10 +59,10 @@ export const products: Record<ProductId, ProductDefinition> = {
   toyRobot: {
     id: "toyRobot",
     name: "Toy Robot",
-    description: "Painted, then given a face, one part at a time.",
+    description: "Painted, then built up: head, arms and legs.",
     unlockLevel: 12,
     baseValue: 50,
-    // Painted before assembly so the spray never buries the face.
+    // Painted first: the Paint Booth sets the colour every part is made in.
     machineSequence: ["paintBooth", "assembler", "packager"],
     orderWeight: 20,
     visualKey: "toy-robot",

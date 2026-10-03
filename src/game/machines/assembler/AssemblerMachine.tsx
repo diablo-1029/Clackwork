@@ -3,13 +3,14 @@
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { audio } from "@/audio/audioManager";
-import { ProductBody } from "@/game/products/ProductRenderer";
-import { RobotPartShape, RobotSocketOutline } from "@/game/products/RobotParts";
+import { getMaterialColors } from "@/game/products/materialProfiles";
+import { RobotPartShape, RobotSocketOutline, RobotTorso } from "@/game/products/RobotParts";
 import type { Point } from "@/lib/math";
 import { useTraceDrag } from "@/lib/pointer/useTraceDrag";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { PRODUCT_RECT, STAGE, type MachineProps } from "../shared";
+import { STAGE, type MachineProps } from "../shared";
 import {
+  ROBOT_TORSO,
   calculateAssemblerQuality,
   partAt,
   resolveDrop,
@@ -20,10 +21,12 @@ import {
 
 const translate = (at: Point) => `translate(${at.x.toFixed(1)}px, ${at.y.toFixed(1)}px)`;
 
+/** Limbs are drawn before the torso so it overlaps their joints; the head goes on top. */
+const DRAW_ORDER: RobotPartKind[] = ["arm", "leg", "head"];
+
 export function AssemblerMachine({
   material,
   isGolden,
-  richness,
   look,
   active,
   onInteractionStart,
@@ -33,8 +36,8 @@ export function AssemblerMachine({
 }: MachineProps) {
   /** Which socket each placed part sits in. */
   const [placed, setPlaced] = useState<Record<string, string>>({});
-  /** The kind of part in the player's hand, so its sockets can light up. */
-  const [heldKind, setHeldKind] = useState<RobotPartKind | null>(null);
+  /** The part in the player's hand, so its sockets can light up and it can be drawn on top. */
+  const [heldId, setHeldId] = useState<string | null>(null);
   const reducedMotion = useSettingsStore((s) => s.reducedMotion);
 
   const surfaceRef = useRef<SVGSVGElement>(null);
@@ -47,12 +50,15 @@ export function AssemblerMachine({
   const finished = useRef(false);
   const timers = useRef<number[]>([]);
 
+  // Every part wears the colour the Paint Booth gave the robot.
+  const color = look.paint?.color ?? getMaterialColors(material, isGolden).base;
+
   useEffect(() => {
     const pending = timers.current;
     return () => pending.forEach((t) => window.clearTimeout(t));
   }, []);
 
-  /** Moves a part's element directly; React state only changes when a part is placed. */
+  /** Moves a part's element directly; React state only changes when a part is picked up or placed. */
   const movePart = (partId: string, at: Point, animate: boolean) => {
     const element = partRefs.current[partId];
     if (!element) return;
@@ -63,7 +69,7 @@ export function AssemblerMachine({
   const release = (at: Point | null) => {
     const partId = held.current;
     held.current = null;
-    setHeldKind(null);
+    setHeldId(null);
     const part = robotParts.find((p) => p.id === partId);
     if (!part) return;
 
@@ -92,10 +98,7 @@ export function AssemblerMachine({
 
     finished.current = true;
     timers.current.push(window.setTimeout(() => audio.play("boxClose"), 120));
-    burst(
-      { x: PRODUCT_RECT.x + PRODUCT_RECT.w / 2, y: PRODUCT_RECT.y + PRODUCT_RECT.h / 2 },
-      { count: 12, spread: 110, shape: "spark" },
-    );
+    burst(ROBOT_TORSO, { count: 12, spread: 110, shape: "spark" });
     onComplete({
       quality: calculateAssemblerQuality({ offsets: offsets.current, wrongDrops: wrongDrops.current }),
       durationMs: performance.now() - startedAt.current,
@@ -113,7 +116,7 @@ export function AssemblerMachine({
       if (!part) return;
       if (startedAt.current === 0) startedAt.current = session.startedAt;
       held.current = part.id;
-      setHeldKind(part.kind);
+      setHeldId(part.id);
       onInteractionStart();
       if (session.start) movePart(part.id, session.start, false);
     },
@@ -125,6 +128,30 @@ export function AssemblerMachine({
   });
 
   const filledSockets = Object.values(placed);
+  const heldKind = robotParts.find((part) => part.id === heldId)?.kind ?? null;
+
+  const renderPart = (part: (typeof robotParts)[number]) => {
+    const socket = robotSockets.find((s) => s.id === placed[part.id]);
+    return (
+      <g
+        key={part.id}
+        ref={(element) => {
+          partRefs.current[part.id] = element;
+        }}
+        style={{ transform: translate(socket ? socket.at : part.tray), pointerEvents: "none" }}
+      >
+        <g className={!socket && heldId === null && active ? "sf-pulse" : undefined}>
+          <RobotPartShape kind={part.kind} color={color} />
+        </g>
+      </g>
+    );
+  };
+
+  // Placed limbs sit behind the torso; loose parts, the head and whatever is in hand stay in front.
+  const behindTorso = robotParts.filter((part) => placed[part.id] && part.kind !== "head" && part.id !== heldId);
+  const inFront = robotParts
+    .filter((part) => !behindTorso.includes(part))
+    .sort((a, b) => Number(a.id === heldId) - Number(b.id === heldId) || DRAW_ORDER.indexOf(a.kind) - DRAW_ORDER.indexOf(b.kind));
 
   return (
     <svg
@@ -132,13 +159,14 @@ export function AssemblerMachine({
       viewBox={`0 0 ${STAGE.w} ${STAGE.h}`}
       className="sf-machine-surface h-full w-full"
       role="img"
-      aria-label={`Assembler. Drag each part onto the matching outline on the robot. ${filledSockets.length} of ${robotParts.length} parts in place.`}
+      aria-label={`Assembler. Drag the head, arms and legs onto the matching outlines around the robot's body. ${filledSockets.length} of ${robotParts.length} parts in place.`}
     >
-      {/* Workbench and parts tray */}
-      <rect x="52" y="38" width="296" height="196" rx="24" fill="var(--fx-machine-dark)" opacity="0.92" />
-      <rect x="60" y="46" width="280" height="180" rx="18" fill="var(--fx-machine)" />
-      <rect x="60" y="46" width="280" height="60" rx="18" fill="var(--fx-machine-light)" opacity="0.28" />
-      <rect x="44" y="232" width="312" height="60" rx="18" fill="var(--fx-machine-dark)" opacity="0.5" />
+      {/* Assembly stand, with a parts tray on each side */}
+      <rect x="18" y="20" width="76" height="262" rx="18" fill="var(--fx-machine-dark)" opacity="0.55" />
+      <rect x="306" y="6" width="76" height="278" rx="18" fill="var(--fx-machine-dark)" opacity="0.55" />
+      <rect x="120" y="230" width="160" height="16" rx="8" fill="var(--fx-machine-dark)" />
+      <rect x="112" y="240" width="176" height="22" rx="10" fill="var(--fx-machine)" />
+      <rect x="112" y="240" width="176" height="8" rx="4" fill="var(--fx-machine-light)" opacity="0.4" />
 
       {/* A small pop when the last part goes on */}
       <motion.g
@@ -147,37 +175,21 @@ export function AssemblerMachine({
         transition={{ duration: 0.32, ease: "easeOut" }}
         style={{ transformBox: "fill-box", transformOrigin: "center" }}
       >
-        <ProductBody material={material} isGolden={isGolden} richness={richness} look={look} {...PRODUCT_RECT} />
-      </motion.g>
-
-      {/* Empty sockets, each the shape of the part it takes */}
-      {robotSockets
-        .filter((socket) => !filledSockets.includes(socket.id))
-        .map((socket) => (
-          <g key={socket.id} transform={`translate(${socket.at.x} ${socket.at.y})`} style={{ pointerEvents: "none" }}>
-            <g className={heldKind === socket.kind ? "sf-pulse" : undefined}>
+        {/* Empty sockets, each the outline of the part it takes */}
+        {robotSockets
+          .filter((socket) => !filledSockets.includes(socket.id))
+          .map((socket) => (
+            <g key={socket.id} transform={`translate(${socket.at.x} ${socket.at.y})`} style={{ pointerEvents: "none" }}>
               <RobotSocketOutline kind={socket.kind} active={heldKind === socket.kind} />
             </g>
-          </g>
-        ))}
+          ))}
 
-      {/* Parts: in the tray, in hand, or snapped into a socket */}
-      {robotParts.map((part) => {
-        const socket = robotSockets.find((s) => s.id === placed[part.id]);
-        return (
-          <g
-            key={part.id}
-            ref={(element) => {
-              partRefs.current[part.id] = element;
-            }}
-            style={{ transform: translate(socket ? socket.at : part.tray), pointerEvents: "none" }}
-          >
-            <g className={!socket && heldKind === null && active ? "sf-pulse" : undefined}>
-              <RobotPartShape kind={part.kind} />
-            </g>
-          </g>
-        );
-      })}
+        {behindTorso.map(renderPart)}
+        <g transform={`translate(${ROBOT_TORSO.x} ${ROBOT_TORSO.y})`} style={{ pointerEvents: "none" }}>
+          <RobotTorso color={color} />
+        </g>
+        {inFront.map(renderPart)}
+      </motion.g>
     </svg>
   );
 }
