@@ -3,7 +3,14 @@ import type { Point } from "@/lib/math";
 import { calculateCutterQuality, isCutAttempt } from "./cutter/cutterScoring";
 import { cutPatterns, getCutPattern, pickCutPattern, pieceShift, splitAlong } from "./cutter/cutterGeometry";
 import { calculatePackagerQuality } from "./packager/packagerScoring";
+import {
+  calculatePaintBoothQuality,
+  depositPaint,
+  paintBoothTuning,
+  paintCoverage,
+} from "./paintBooth/paintBoothScoring";
 import { calculatePolisherQuality, polisherTuning } from "./polisher/polisherScoring";
+import { PRODUCT_RECT } from "./shared";
 import { calculateStamperQuality, markerPosition } from "./stamper/stamperScoring";
 
 const from: Point = { x: 200, y: 70 };
@@ -187,5 +194,84 @@ describe("polisher scoring", () => {
 
   it("scores an untouched surface low", () => {
     expect(calculatePolisherQuality({ cells: cells(0), durationMs: 8000 })).toBeLessThanOrEqual(30);
+  });
+});
+
+describe("paint booth scoring", () => {
+  const size = paintBoothTuning.cols * paintBoothTuning.rows;
+  const coat = (share: number, thickness = 0.9) =>
+    Array.from({ length: size }, (_, i) => (i < size * share ? thickness : 0));
+
+  /** Sprays back and forth across the tile at a steady speed, 16 ms per frame. */
+  function sweep(speed: number, rowGap = 22) {
+    const cells = new Float32Array(size);
+    const { x, y, w, h } = PRODUCT_RECT;
+    const step = (speed * 16) / 1000;
+    let row = 0;
+    for (let py = y + 10; py <= y + h - 8; py += rowGap, row++) {
+      for (let travelled = 0; travelled <= w - 16; travelled += step) {
+        const px = row % 2 ? x + w - 8 - travelled : x + 8 + travelled;
+        depositPaint(cells, { x: px, y: py }, 16);
+      }
+    }
+    return cells;
+  }
+
+  it("scores a full, even coat as Perfect", () => {
+    expect(calculatePaintBoothQuality({ cells: coat(1), oversprayMs: 0 })).toBe(100);
+  });
+
+  it("scores bare patches lower", () => {
+    const most = calculatePaintBoothQuality({ cells: coat(0.8), oversprayMs: 0 });
+    const half = calculatePaintBoothQuality({ cells: coat(0.5), oversprayMs: 0 });
+    expect(most).toBeLessThan(100);
+    expect(half).toBeLessThan(most);
+    expect(calculatePaintBoothQuality({ cells: coat(0), oversprayMs: 0 })).toBeLessThanOrEqual(20);
+  });
+
+  it("scores pooled paint lower", () => {
+    expect(calculatePaintBoothQuality({ cells: coat(1, 2.6), oversprayMs: 0 })).toBe(70);
+  });
+
+  it("scores overspray lower, after a short grace period", () => {
+    expect(calculatePaintBoothQuality({ cells: coat(1), oversprayMs: 300 })).toBe(100);
+    expect(calculatePaintBoothQuality({ cells: coat(1), oversprayMs: 5000 })).toBe(85);
+  });
+
+  it("rewards one smooth pass", () => {
+    const cells = sweep(150);
+    expect(paintCoverage(cells)).toBeGreaterThanOrEqual(paintBoothTuning.fullCoverage);
+    expect(calculatePaintBoothQuality({ cells, oversprayMs: 0 })).toBe(100);
+  });
+
+  it("lets a fast, thin pass be topped up without pooling", () => {
+    const { x, y, w, h } = PRODUCT_RECT;
+    const cells = sweep(300);
+    expect(paintCoverage(cells)).toBeLessThan(paintBoothTuning.releaseFinishCoverage);
+    // A second quick pass over the same rows.
+    for (let py = y + 10; py <= y + h - 8; py += 22) {
+      for (let px = x + 8; px <= x + w - 8; px += 4.8) depositPaint(cells, { x: px, y: py }, 16);
+    }
+    expect(calculatePaintBoothQuality({ cells, oversprayMs: 0 })).toBe(100);
+  });
+
+  it("pools paint when the spray crawls", () => {
+    const slow = calculatePaintBoothQuality({ cells: sweep(60), oversprayMs: 0 });
+    expect(slow).toBeLessThan(90);
+  });
+
+  it("pools paint when the nozzle is held still", () => {
+    const cells = new Float32Array(size);
+    const center = { x: PRODUCT_RECT.x + PRODUCT_RECT.w / 2, y: PRODUCT_RECT.y + PRODUCT_RECT.h / 2 };
+    for (let ms = 0; ms < 900; ms += 16) depositPaint(cells, center, 16);
+    expect(Math.max(...cells)).toBeGreaterThan(paintBoothTuning.thickThreshold);
+    expect(Math.max(...cells)).toBeLessThanOrEqual(paintBoothTuning.maxThickness);
+  });
+
+  it("reports the nozzle being off the tile", () => {
+    const cells = new Float32Array(size);
+    expect(depositPaint(cells, { x: PRODUCT_RECT.x + 20, y: PRODUCT_RECT.y + 20 }, 16)).toBe(false);
+    expect(depositPaint(cells, { x: PRODUCT_RECT.x - 3, y: PRODUCT_RECT.y + 20 }, 16)).toBe(false);
+    expect(depositPaint(cells, { x: PRODUCT_RECT.x - 30, y: PRODUCT_RECT.y + 20 }, 16)).toBe(true);
   });
 });

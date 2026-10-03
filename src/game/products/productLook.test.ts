@@ -46,6 +46,12 @@ describe("product look", () => {
     expect(look.polished).toBe(true);
   });
 
+  it("keeps the glaze the Paint Booth applied", () => {
+    expect(deriveProductLook([result("paintBooth", 95, { glaze: "#2f7fd8" })]).paint).toEqual({ color: "#2f7fd8" });
+    expect(deriveProductLook([result("paintBooth", 95, { glaze: 7 })]).paint).toBeUndefined();
+    expect(deriveProductLook([result("paintBooth", 95)]).paint).toBeUndefined();
+  });
+
   it("ignores missing or unknown metadata", () => {
     const look = deriveProductLook([
       result("cutter", 80),

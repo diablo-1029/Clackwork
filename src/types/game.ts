@@ -46,7 +46,7 @@ export type SoundKey =
   | "levelUp"
   | "golden";
 
-export type LoopKey = "cutLoop" | "polishLoop" | "tapeLoop";
+export type LoopKey = "cutLoop" | "polishLoop" | "tapeLoop" | "sprayLoop";
 
 export interface MachineSfxConfig {
   loop?: LoopKey;

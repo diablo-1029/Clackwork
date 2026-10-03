@@ -32,4 +32,5 @@ export const loopChannels: Record<LoopKey, AudioChannel> = {
   cutLoop: "machine",
   polishLoop: "machine",
   tapeLoop: "machine",
+  sprayLoop: "machine",
 };

@@ -46,8 +46,17 @@ describe("unlocks", () => {
     expect(getUnlocksAtLevel(5).map((u) => u.id).sort()).toEqual(["goldenTouch", "polisher"]);
   });
 
+  it("unlocks the Paint Booth and Ceramic Coaster at level 8", () => {
+    expect(machinesUnlockedAt(7)).not.toContain("paintBooth");
+    expect(productsUnlockedAt(7)).not.toContain("ceramicCoaster");
+    expect(machinesUnlockedAt(8)).toContain("paintBooth");
+    expect(productsUnlockedAt(8)).toContain("ceramicCoaster");
+    expect(getUnlocksAtLevel(8).map((u) => u.id).sort()).toEqual(["ceramicCoaster", "nightShift", "paintBooth"]);
+  });
+
   it("never unlocks products whose machines are not playable yet", () => {
-    expect(productsUnlockedAt(99).sort()).toEqual(["soapBar", "woodBlock"]);
+    // Crystal and Gold Ingot need the Sorter, which has no module.
+    expect(productsUnlockedAt(99).sort()).toEqual(["ceramicCoaster", "soapBar", "woodBlock"]);
   });
 
   it("extends the Soap Bar chain once the Polisher is owned", () => {

@@ -18,6 +18,8 @@ export interface ProductLook {
   /** Cut seams, in the coordinate space of `PRODUCT_RECT`. */
   cuts: CutSegment[];
   stamp?: StampMark;
+  /** The glaze the Paint Booth applied. */
+  paint?: { color: string };
   polished: boolean;
 }
 
@@ -41,6 +43,9 @@ export function deriveProductLook(results: MachineResult[]): ProductLook {
     } else if (result.machineId === "stamper") {
       const position = result.metadata?.markerPosition;
       if (typeof position === "number") look.stamp = stampMark(position, result.quality);
+    } else if (result.machineId === "paintBooth") {
+      const glaze = result.metadata?.glaze;
+      if (typeof glaze === "string") look.paint = { color: glaze };
     } else if (result.machineId === "polisher") {
       look.polished = true;
     }

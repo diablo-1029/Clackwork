@@ -239,6 +239,39 @@ describe("production run", () => {
   });
 });
 
+describe("ceramic coaster", () => {
+  it("arrives as the next order at level 8 and runs through all four machines", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 7, xp: 1380 });
+    useProgressionStore.getState().syncUnlocks(7);
+    useProgressionStore.getState().setOnboarding("hasSeenGoldenIntro");
+
+    createOrder();
+    run().dispatch("INTRO_DONE");
+    while (run().phase !== "PRODUCT_COMPLETE") playMachine(100);
+    finishProduct();
+
+    expect(player().factoryLevel).toBe(8);
+    expect(useProgressionStore.getState().machines).toContain("paintBooth");
+    expect(useProgressionStore.getState().products).toContain("ceramicCoaster");
+
+    const order = createOrder();
+    expect(order?.productId).toBe("ceramicCoaster");
+    expect(order?.machineSequence).toEqual(["paintBooth", "stamper", "polisher", "packager"]);
+
+    run().dispatch("INTRO_DONE");
+    order!.machineSequence.forEach(() => playMachine(100));
+    const coins = player().coins;
+    const summary = finishProduct();
+
+    expect(run().run?.results.map((r) => r.machineId)).toEqual(order!.machineSequence);
+    expect(summary?.productId).toBe("ceramicCoaster");
+    expect(player().coins).toBe(coins + summary!.coins);
+    // Paid once.
+    expect(finishProduct()).toBeNull();
+    expect(player().coins).toBe(coins + summary!.coins);
+  });
+});
+
 describe("purchases", () => {
   it("is atomic and never leaves negative coins", () => {
     usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 2, coins: 60 });

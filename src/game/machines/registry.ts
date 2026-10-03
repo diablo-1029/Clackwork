@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import type { MachineId } from "@/types/game";
 import { CutterMachine } from "./cutter/CutterMachine";
 import { PackagerMachine } from "./packager/PackagerMachine";
+import { PaintBoothMachine } from "./paintBooth/PaintBoothMachine";
 import { PolisherMachine } from "./polisher/PolisherMachine";
 import type { MachineProps } from "./shared";
 import { StamperMachine } from "./stamper/StamperMachine";
@@ -12,6 +13,7 @@ import { StamperMachine } from "./stamper/StamperMachine";
  */
 export const machineComponents: Partial<Record<MachineId, ComponentType<MachineProps>>> = {
   cutter: CutterMachine,
+  paintBooth: PaintBoothMachine,
   stamper: StamperMachine,
   polisher: PolisherMachine,
   packager: PackagerMachine,

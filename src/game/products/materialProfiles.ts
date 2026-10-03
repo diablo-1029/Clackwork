@@ -12,6 +12,8 @@ export interface MaterialProfileDefinition {
   /** 0–1 colour of the buffing sound: low is dull and dry, high is bright and glassy. */
   polishTone: number;
   shineIntensity: number;
+  /** Glazes the Paint Booth can apply to this material; one is picked per order. */
+  glazeColors?: string[];
   /** Surface treatment drawn by ProductBody. */
   colorTreatment: "grain" | "gloss";
   colors: {
@@ -69,6 +71,7 @@ export const materialProfiles: Record<MaterialProfile, MaterialProfileDefinition
     polishFriction: 0.5,
     polishTone: 0.6,
     shineIntensity: 0.7,
+    glazeColors: ["#2f7fd8", "#e2574c", "#2fae8f", "#f0a63a", "#7a5bd6"],
     colorTreatment: "gloss",
     colors: {
       light: "#ffffff",

@@ -65,6 +65,11 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
           <stop offset="0" stopColor="#ffffff" stopOpacity={0.25 + shine * 0.55} />
           <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
+        <linearGradient id={`${id}-shade`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.18" />
+          <stop offset="0.5" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="1" stopColor="#000000" stopOpacity="0.22" />
+        </linearGradient>
         <clipPath id={`${id}-clip`}>
           <rect x={x} y={y} width={w} height={h} rx={r} />
         </clipPath>
@@ -72,6 +77,13 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
 
       <rect x={x} y={y + depth} width={w} height={h} rx={r} fill={colors.dark} />
       <rect x={x} y={y} width={w} height={h} rx={r} fill={`url(#${id}-fill)`} />
+      {/* Glaze sits over the body and under the gloss, so a painted product still reads as shaped. */}
+      {look?.paint && (
+        <>
+          <rect x={x} y={y} width={w} height={h} rx={r} fill={look.paint.color} />
+          <rect x={x} y={y} width={w} height={h} rx={r} fill={`url(#${id}-shade)`} />
+        </>
+      )}
 
       <g clipPath={`url(#${id}-clip)`}>
         {grain &&

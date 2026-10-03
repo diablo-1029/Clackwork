@@ -284,6 +284,13 @@ class AudioManager {
         filter.type = "bandpass";
         filter.Q.value = 1.4;
         peak = 0.22;
+      } else if (key === "sprayLoop") {
+        // An airy hiss: mostly high frequencies, barely any body.
+        filter.type = "highpass";
+        filter.Q.value = 0.7;
+        baseFreq = 3200;
+        freqRange = 900;
+        peak = 0.17;
       } else if (key === "tapeLoop") {
         filter.type = "bandpass";
         filter.Q.value = 2.4;
