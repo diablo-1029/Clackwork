@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { audio } from "@/audio/audioManager";
 import { ResultFeedback } from "@/components/feedback/ResultFeedback";
 import { LevelUpOverlay } from "@/components/overlays/LevelUpOverlay";
@@ -14,6 +14,7 @@ import { pacing } from "@/config/progression";
 import { upgrades } from "@/config/upgrades";
 import { getQualityBand } from "@/game/economy/multipliers";
 import type { MachineCompletion } from "@/game/machines/shared";
+import { deriveProductLook } from "@/game/products/productLook";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useProgressionStore } from "@/stores/progressionStore";
 import { useRunStore } from "@/stores/runStore";
@@ -48,11 +49,18 @@ export function ProductionRunController() {
   const showToast = useUiStore((s) => s.showToast);
 
   const productsCompleted = usePlayerStore((s) => s.totalProductsCompleted);
+  const factoryLevel = usePlayerStore((s) => s.factoryLevel);
   const onboarding = useProgressionStore((s) => s.onboarding);
   const setOnboarding = useProgressionStore((s) => s.setOnboarding);
   const materialsLevel = useProgressionStore((s) => s.upgrades.betterMaterials);
 
   const [celebrating, setCelebrating] = useState(false);
+
+  // What earlier machines did to the product. The active machine's own result is
+  // left out: it animates that change itself.
+  const results = run?.results;
+  const activeIndex = run?.currentMachineIndex ?? 0;
+  const look = useMemo(() => deriveProductLook((results ?? []).slice(0, activeIndex)), [results, activeIndex]);
 
   // There is always an order on the floor.
   useEffect(() => {
@@ -185,6 +193,8 @@ export function ProductionRunController() {
                 material={product.materialProfile}
                 isGolden={run.isGolden}
                 richness={materialsLevel / upgrades.betterMaterials.maxLevel}
+                look={look}
+                factoryLevel={factoryLevel}
                 active={interactive}
                 showHint={showHint}
                 onInteractionStart={() => dispatch("INTERACTION_START")}

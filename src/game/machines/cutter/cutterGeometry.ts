@@ -1,10 +1,29 @@
 import { hashString, type Point } from "@/lib/math";
 import { PRODUCT_RECT } from "../shared";
 
-export interface CutPattern {
-  id: "vertical" | "diagonalRight" | "diagonalLeft" | "horizontal";
+export interface CutSegment {
   from: Point;
   to: Point;
+}
+
+export type CutPatternId =
+  | "vertical"
+  | "diagonalRight"
+  | "diagonalLeft"
+  | "horizontal"
+  | "doubleVertical"
+  | "doubleHorizontal";
+
+export interface CutPattern {
+  id: CutPatternId;
+  /**
+   * One guide per cut, made in order. Multi-cut patterns must be parallel and
+   * ordered so each segment's normal (see `splitAlong`) points at the pieces
+   * already cut off.
+   */
+  segments: CutSegment[];
+  /** Factory Level from which this pattern can appear. */
+  minLevel: number;
 }
 
 const { x, y, w, h } = PRODUCT_RECT;
@@ -13,18 +32,34 @@ const cy = y + h / 2;
 /** How far the guide overhangs the product on each side. */
 const OVERHANG = 16;
 
+const down = (atX: number, lean = 0): CutSegment => ({
+  from: { x: atX - lean, y: y - OVERHANG },
+  to: { x: atX + lean, y: y + h + OVERHANG },
+});
+const across = (atY: number): CutSegment => ({
+  from: { x: x - OVERHANG, y: atY },
+  to: { x: x + w + OVERHANG, y: atY },
+});
+
 /** Straight cuts only for now; curves are a post-MVP pattern. */
 export const cutPatterns: CutPattern[] = [
-  { id: "vertical", from: { x: cx, y: y - OVERHANG }, to: { x: cx, y: y + h + OVERHANG } },
-  { id: "diagonalRight", from: { x: cx - 42, y: y - OVERHANG }, to: { x: cx + 42, y: y + h + OVERHANG } },
-  { id: "diagonalLeft", from: { x: cx + 42, y: y - OVERHANG }, to: { x: cx - 42, y: y + h + OVERHANG } },
-  { id: "horizontal", from: { x: x - OVERHANG, y: cy }, to: { x: x + w + OVERHANG, y: cy } },
+  { id: "vertical", segments: [down(cx)], minLevel: 1 },
+  { id: "diagonalRight", segments: [down(cx, 42)], minLevel: 1 },
+  { id: "diagonalLeft", segments: [down(cx, -42)], minLevel: 1 },
+  { id: "horizontal", segments: [across(cy)], minLevel: 1 },
+  { id: "doubleVertical", segments: [down(cx - 34), down(cx + 34)], minLevel: 2 },
+  { id: "doubleHorizontal", segments: [across(cy + 22), across(cy - 22)], minLevel: 2 },
 ];
 
+export function getCutPattern(id: unknown): CutPattern | undefined {
+  return cutPatterns.find((pattern) => pattern.id === id);
+}
+
 /** Stable per run (so a remount shows the same cut); always the simplest cut while learning. */
-export function pickCutPattern(runId: string, onboarding: boolean): CutPattern {
+export function pickCutPattern(runId: string, onboarding: boolean, factoryLevel = 1): CutPattern {
   if (onboarding) return cutPatterns[0];
-  return cutPatterns[hashString(runId) % cutPatterns.length];
+  const pool = cutPatterns.filter((pattern) => pattern.minLevel <= factoryLevel);
+  return pool[hashString(runId) % pool.length] ?? cutPatterns[0];
 }
 
 export interface CutHalves {
@@ -55,4 +90,13 @@ export function splitAlong(from: Point, to: Point): CutHalves {
       .join(" ");
 
   return { sideA: quad(1), sideB: quad(-1), normal };
+}
+
+/**
+ * How far piece `index` (0 = first piece cut off) has slid along the cut normal
+ * once `cutsDone` cuts are made, in units of one separation step. Pieces that
+ * are not cut apart yet move together.
+ */
+export function pieceShift(index: number, cutsDone: number): number {
+  return cutsDone - 2 * Math.min(index, cutsDone);
 }

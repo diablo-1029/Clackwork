@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Point } from "@/lib/math";
 import { calculateCutterQuality, isCutAttempt } from "./cutter/cutterScoring";
-import { cutPatterns, pickCutPattern, splitAlong } from "./cutter/cutterGeometry";
+import { cutPatterns, getCutPattern, pickCutPattern, pieceShift, splitAlong } from "./cutter/cutterGeometry";
 import { calculatePackagerQuality } from "./packager/packagerScoring";
 import { calculatePolisherQuality, polisherTuning } from "./polisher/polisherScoring";
 import { calculateStamperQuality, markerPosition } from "./stamper/stamperScoring";
@@ -69,8 +69,39 @@ describe("cutter geometry", () => {
   });
 
   it("picks a stable pattern per run", () => {
-    expect(pickCutPattern("run-a", false)).toBe(pickCutPattern("run-a", false));
-    expect(cutPatterns).toContain(pickCutPattern("run-b", false));
+    expect(pickCutPattern("run-a", false, 5)).toBe(pickCutPattern("run-a", false, 5));
+    expect(cutPatterns).toContain(pickCutPattern("run-b", false, 5));
+  });
+
+  it("keeps double cuts back until their level", () => {
+    const ids = (level: number) =>
+      new Set(Array.from({ length: 200 }, (_, i) => pickCutPattern(`run-${i}`, false, level).id));
+    expect([...ids(1)].some((id) => id.startsWith("double"))).toBe(false);
+    expect(ids(2).has("doubleVertical")).toBe(true);
+    expect(ids(2).has("doubleHorizontal")).toBe(true);
+  });
+
+  it("scores each cut of a double pattern on its own guide", () => {
+    const pattern = getCutPattern("doubleVertical")!;
+    expect(pattern.segments).toHaveLength(2);
+    const along = (s: { from: Point; to: Point }, offset: number) =>
+      Array.from({ length: 41 }, (_, i) => ({
+        x: s.from.x + offset,
+        y: s.from.y + ((s.to.y - s.from.y) * i) / 40,
+      }));
+    const clean = calculateCutterQuality({ points: along(pattern.segments[0], 0), ...pattern.segments[0] });
+    const crooked = calculateCutterQuality({ points: along(pattern.segments[1], 20), ...pattern.segments[1] });
+    expect(clean).toBe(100);
+    expect(crooked).toBeLessThan(90);
+    // Tracing the first guide while the second is on offer is a miss, not a pass.
+    expect(calculateCutterQuality({ points: along(pattern.segments[0], 0), ...pattern.segments[1] })).toBeLessThan(40);
+  });
+
+  it("slides pieces apart only along cuts that are made", () => {
+    // Two cuts, three pieces.
+    expect([0, 1, 2].map((i) => pieceShift(i, 0))).toEqual([0, 0, 0]);
+    expect([0, 1, 2].map((i) => pieceShift(i, 1))).toEqual([1, -1, -1]);
+    expect([0, 1, 2].map((i) => pieceShift(i, 2))).toEqual([2, 0, -2]);
   });
 
   it("splits the stage into two sides with a unit normal", () => {

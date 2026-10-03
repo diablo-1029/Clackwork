@@ -24,6 +24,7 @@ export function PackagerMachine({
   material,
   isGolden,
   richness,
+  look,
   active,
   showHint,
   onInteractionStart,
@@ -137,7 +138,7 @@ export function PackagerMachine({
         {/* Box interior with the product nestled inside */}
         <rect x={BOX.x} y={BOX.y + 7} width={BOX.w} height={BOX.h} rx={BOX.r} fill="#8a623a" />
         <rect x={BOX.x} y={BOX.y} width={BOX.w} height={BOX.h} rx={BOX.r} fill="#a87a4a" />
-        <ProductBody material={material} isGolden={isGolden} richness={richness} x={BOX.x + 34} y={BOX.y + 40} w={BOX.w - 68} h={BOX.h - 80} r={12} />
+        <ProductBody material={material} isGolden={isGolden} richness={richness} look={look} x={BOX.x + 34} y={BOX.y + 40} w={BOX.w - 68} h={BOX.h - 80} r={12} />
 
         {/* Flaps fold shut over the product as the box arrives */}
         <g clipPath={`url(#${id}-box)`}>

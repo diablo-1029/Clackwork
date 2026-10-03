@@ -1,30 +1,57 @@
 import { useId } from "react";
+import { PRODUCT_RECT } from "@/game/machines/shared";
 import type { MaterialProfile } from "@/types/game";
 import { getMaterialColors, materialProfiles } from "./materialProfiles";
+import type { ProductLook, StampMark } from "./productLook";
 
-interface ProductBodyProps {
-  material: MaterialProfile;
-  isGolden?: boolean;
-  /** 0–1 cosmetic boost from Better Materials. */
-  richness?: number;
+interface Rect {
   x: number;
   y: number;
   w: number;
   h: number;
+}
+
+interface ProductBodyProps extends Rect {
+  material: MaterialProfile;
+  isGolden?: boolean;
+  /** 0–1 cosmetic boost from Better Materials. */
+  richness?: number;
   r?: number;
+  /** Marks left by earlier machines (cut seams, imprint, polish). */
+  look?: ProductLook;
+}
+
+/** Size of the imprint relative to the Stamper slab it was designed on (160 × 78). */
+const imprintScale = (rect: Rect) => Math.min(rect.w / 160, rect.h / 78);
+
+/** The stamped logo, drawn the same way wherever the product appears. */
+export function ProductImprint({ rect, mark, color }: { rect: Rect; mark: StampMark; color: string }) {
+  return (
+    <g
+      transform={`translate(${rect.x + rect.w / 2 + mark.shift * rect.w} ${rect.y + rect.h / 2}) scale(${imprintScale(rect)})`}
+      opacity={mark.strength}
+    >
+      <circle r="24" fill="none" stroke={color} strokeWidth="3.5" />
+      <circle r="24" fill="none" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="1.5" transform="translate(0 1.6)" />
+      <path d="M0 -14 L4.1 -4.6 L14 -4.3 L6.2 2.2 L8.7 12 L0 6.4 L-8.7 12 L-6.2 2.2 L-14 -4.3 L-4.1 -4.6 Z" fill={color} />
+    </g>
+  );
 }
 
 /**
  * The product as an SVG group, drawn in whatever coordinate system the caller
  * uses. Soft-3D look: a darker underside, a top-lit gradient and a gloss.
  */
-export function ProductBody({ material, isGolden = false, richness = 0, x, y, w, h, r = 14 }: ProductBodyProps) {
+export function ProductBody({ material, isGolden = false, richness = 0, x, y, w, h, r = 14, look }: ProductBodyProps) {
   const id = useId().replace(/:/g, "");
   const profile = materialProfiles[material];
   const colors = getMaterialColors(material, isGolden);
   const depth = Math.max(3, h * 0.07);
-  const shine = Math.min(1, (isGolden ? 0.85 : profile.shineIntensity) + richness * 0.3);
+  const polish = look?.polished ? 0.35 : 0;
+  const shine = Math.min(1, (isGolden ? 0.85 : profile.shineIntensity) + richness * 0.3 + polish);
   const grain = profile.colorTreatment === "grain" && !isGolden;
+  // Seams are recorded where the Cutter made them; map that space onto this rect.
+  const seamTransform = `translate(${x} ${y}) scale(${w / PRODUCT_RECT.w} ${h / PRODUCT_RECT.h}) translate(${-PRODUCT_RECT.x} ${-PRODUCT_RECT.y})`;
 
   return (
     <g>
@@ -76,6 +103,25 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
             strokeWidth={Math.max(1, h * 0.012)}
           />
         )}
+
+        {look?.cuts.map((cut, index) => (
+          <g key={index} transform={seamTransform}>
+            <line x1={cut.from.x} y1={cut.from.y} x2={cut.to.x} y2={cut.to.y} stroke={colors.dark} strokeWidth="3" vectorEffect="non-scaling-stroke" />
+            <line
+              x1={cut.from.x}
+              y1={cut.from.y}
+              x2={cut.to.x}
+              y2={cut.to.y}
+              stroke="#ffffff"
+              strokeOpacity="0.45"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+              transform="translate(1.4 1.4)"
+            />
+          </g>
+        ))}
+
+        {look?.stamp && <ProductImprint rect={{ x, y, w, h }} mark={look.stamp} color={colors.dark} />}
       </g>
 
       {isGolden &&

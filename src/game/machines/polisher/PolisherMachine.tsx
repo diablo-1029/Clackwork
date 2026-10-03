@@ -34,6 +34,7 @@ export function PolisherMachine({
   material,
   isGolden,
   richness,
+  look,
   active,
   onInteractionStart,
   onComplete,
@@ -241,7 +242,7 @@ export function PolisherMachine({
         <rect x="62" y="52" width="276" height="196" rx="22" fill="var(--fx-machine-dark)" opacity="0.92" />
         <rect x="70" y="60" width="260" height="180" rx="16" fill="var(--fx-machine)" />
         <rect x="70" y="60" width="260" height="60" rx="16" fill="var(--fx-machine-light)" opacity="0.28" />
-        <ProductBody material={material} isGolden={isGolden} richness={Math.max(richness, 0.6)} {...PRODUCT_RECT} />
+        <ProductBody material={material} isGolden={isGolden} richness={richness} look={{ ...look, polished: true }} {...PRODUCT_RECT} />
       </svg>
 
       <canvas

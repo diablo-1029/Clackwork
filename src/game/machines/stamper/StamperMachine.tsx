@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { audio } from "@/audio/audioManager";
 import { getMaterialColors } from "@/game/products/materialProfiles";
-import { ProductBody } from "@/game/products/ProductRenderer";
+import { stampMark } from "@/game/products/productLook";
+import { ProductBody, ProductImprint } from "@/game/products/ProductRenderer";
 import { STAGE, type MachineProps } from "../shared";
 import { calculateStamperQuality, markerPosition, stamperTuning } from "./stamperScoring";
 
@@ -20,6 +21,7 @@ export function StamperMachine({
   material,
   isGolden,
   richness,
+  look,
   active,
   onComplete,
   burst,
@@ -82,8 +84,7 @@ export function StamperMachine({
   const perfectHalf = (stamperTuning.perfectZone * TRACK.w) / 2;
   const center = TRACK.x + TRACK.w / 2;
   // An off-center press leaves a visibly off-center, fainter imprint.
-  const imprintShift = press ? (press.position - 0.5) * 46 : 0;
-  const imprintOpacity = press ? 0.45 + (press.quality / 100) * 0.5 : 0;
+  const mark = press ? stampMark(press.position, press.quality) : null;
 
   return (
     <div className="relative h-full w-full">
@@ -101,22 +102,16 @@ export function StamperMachine({
           animate={press ? { y: [0, 0, 4, 0] } : { y: 0 }}
           transition={{ duration: 0.3, times: [0, 0.3, 0.45, 1] }}
         >
-          <ProductBody material={material} isGolden={isGolden} richness={richness} {...SLAB} />
+          <ProductBody material={material} isGolden={isGolden} richness={richness} look={look} {...SLAB} />
 
-          {press && (
+          {/* The imprint appears at the moment of impact, hidden behind the head until it lifts. */}
+          {mark && (
             <motion.g
               initial={{ opacity: 0 }}
-              animate={{ opacity: imprintOpacity }}
+              animate={{ opacity: 1 }}
               transition={{ delay: IMPACT_MS / 1000, duration: 0.05 }}
             >
-              <g transform={`translate(${SLAB.x + SLAB.w / 2 + imprintShift} ${SLAB.y + SLAB.h / 2})`}>
-                <circle r="24" fill="none" stroke={colors.dark} strokeWidth="3.5" />
-                <circle r="24" fill="none" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="1.5" transform="translate(0 1.6)" />
-                <path
-                  d="M0 -14 L4.1 -4.6 L14 -4.3 L6.2 2.2 L8.7 12 L0 6.4 L-8.7 12 L-6.2 2.2 L-14 -4.3 L-4.1 -4.6 Z"
-                  fill={colors.dark}
-                />
-              </g>
+              <ProductImprint rect={SLAB} mark={mark} color={colors.dark} />
             </motion.g>
           )}
         </motion.g>

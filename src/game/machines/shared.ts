@@ -1,4 +1,5 @@
 import type { Point } from "@/lib/math";
+import type { ProductLook } from "@/game/products/productLook";
 import type { MaterialProfile, ProductDefinition } from "@/types/game";
 
 /** Every machine draws into the same 4:3 stage so layout and input math are shared. */
@@ -20,6 +21,9 @@ export interface MachineProps {
   isGolden: boolean;
   /** 0–1, how far Better Materials has been upgraded; purely cosmetic. */
   richness: number;
+  /** Marks earlier machines left on this product. */
+  look: ProductLook;
+  factoryLevel: number;
   /** Input is accepted only while true. */
   active: boolean;
   /** Show the extra first-time hint animation. */
