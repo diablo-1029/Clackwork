@@ -15,7 +15,7 @@ export interface MaterialProfileDefinition {
   /** Glazes the Paint Booth can apply to this material; one is picked per order. */
   glazeColors?: string[];
   /** Surface treatment drawn by ProductBody. */
-  colorTreatment: "grain" | "gloss" | "facet";
+  colorTreatment: "grain" | "gloss" | "facet" | "bevel";
   colors: {
     light: string;
     base: string;
@@ -108,7 +108,7 @@ export const materialProfiles: Record<MaterialProfile, MaterialProfileDefinition
     polishFriction: 0.5,
     polishTone: 0.5,
     shineIntensity: 0.9,
-    colorTreatment: "gloss",
+    colorTreatment: "bevel",
     colors: {
       light: "#fff1b0",
       base: "#ffc72c",

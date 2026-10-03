@@ -63,10 +63,18 @@ describe("unlocks", () => {
     expect(getUnlocksAtLevel(10).map((u) => u.id).sort()).toEqual(["crystal", "sorter", "sunsetShift"]);
   });
 
-  it("keeps Gold Ingot locked until it is released", () => {
-    expect(isProductPlayable(products.goldIngot)).toBe(false);
-    expect(getUnlocksAtLevel(15).map((u) => u.id)).not.toContain("goldIngot");
-    expect(productsUnlockedAt(99).sort()).toEqual(["ceramicCoaster", "crystal", "soapBar", "woodBlock"]);
+  it("unlocks Gold Ingot at level 15", () => {
+    expect(productsUnlockedAt(14)).not.toContain("goldIngot");
+    expect(productsUnlockedAt(15)).toContain("goldIngot");
+    expect(getUnlocksAtLevel(15).map((u) => u.id)).toEqual(["goldIngot"]);
+    expect(productsUnlockedAt(99).sort()).toEqual(["ceramicCoaster", "crystal", "goldIngot", "soapBar", "woodBlock"]);
+  });
+
+  it("keeps a product locked while it is not released", () => {
+    expect(isProductPlayable(products.goldIngot)).toBe(true);
+    expect(isProductPlayable({ ...products.goldIngot, released: false })).toBe(false);
+    // The Assembler has no module, so anything that needs it stays locked too.
+    expect(isProductPlayable({ ...products.goldIngot, machineSequence: ["assembler", "packager"] })).toBe(false);
   });
 
   it("extends the Soap Bar chain once the Polisher is owned", () => {

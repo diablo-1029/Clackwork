@@ -64,8 +64,6 @@ export const products: Record<ProductId, ProductDefinition> = {
     baseValue: 60,
     machineSequence: ["stamper", "polisher", "sorter", "packager"],
     orderWeight: 15,
-    // Every machine it needs exists, but it has not had its own design pass yet.
-    released: false,
     visualKey: "gold-ingot",
     materialProfile: "gold",
     rarity: "rare",

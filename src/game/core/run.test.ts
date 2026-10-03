@@ -295,6 +295,29 @@ describe("crystal", () => {
   });
 });
 
+describe("gold ingot", () => {
+  it("arrives as the next order at level 15 and runs through all four machines", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 15 });
+    useProgressionStore.getState().syncUnlocks(15);
+    useProgressionStore.getState().setOnboarding("hasSeenGoldenIntro");
+    useUiStore.getState().queueProducts(["goldIngot"]);
+
+    const order = createOrder();
+    expect(order?.productId).toBe("goldIngot");
+    expect(order?.machineSequence).toEqual(["stamper", "polisher", "sorter", "packager"]);
+
+    run().dispatch("INTRO_DONE");
+    order!.machineSequence.forEach(() => playMachine(100));
+    const summary = finishProduct();
+
+    expect(run().run?.results.map((r) => r.machineId)).toEqual(order!.machineSequence);
+    // 60 x 1.30 (Perfect) x 1.05 (streak of 4) = 81.9, rounded to 82
+    expect(summary).toMatchObject({ productId: "goldIngot", quality: 100, coins: 82 });
+    expect(finishProduct()).toBeNull();
+    expect(player().coins).toBe(82);
+  });
+});
+
 describe("purchases", () => {
   it("is atomic and never leaves negative coins", () => {
     usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 2, coins: 60 });

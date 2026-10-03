@@ -50,9 +50,11 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
   const polish = look?.polished ? 0.35 : 0;
   const shine = Math.min(1, (isGolden ? 0.85 : profile.shineIntensity) + richness * 0.3 + polish);
   const grain = profile.colorTreatment === "grain" && !isGolden;
-  const facet = profile.colorTreatment === "facet";
-  // Corners of the outer face and of the flat "table" in the middle of a cut stone.
-  const inset = { x: w * 0.2, y: h * 0.24 };
+  const bevel = profile.colorTreatment === "bevel";
+  const facet = profile.colorTreatment === "facet" || bevel;
+  // Corners of the outer face and of the flat top: the "table" of a cut stone,
+  // or the wider top of a cast bar with sloped sides.
+  const inset = bevel ? { x: w * 0.09, y: h * 0.15 } : { x: w * 0.2, y: h * 0.24 };
   const [ox1, oy1, ox2, oy2] = [x, y, x + w, y + h];
   const [ix1, iy1, ix2, iy2] = [x + inset.x, y + inset.y, x + w - inset.x, y + h - inset.y];
   // Seams are recorded where the Cutter made them; map that space onto this rect.

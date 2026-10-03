@@ -76,8 +76,8 @@ export const machines: Record<MachineId, MachineDefinition> = {
   sorter: {
     id: "sorter",
     name: "Sorter",
-    description: "Routes each product to the right lane.",
-    instruction: "Send each gem to its bin.",
+    description: "Sends each piece to the bin that matches its shape.",
+    instruction: "Send each piece to its bin.",
     unlockLevel: 10,
     estimatedDurationSeconds: 10,
     baseDifficulty: 3,

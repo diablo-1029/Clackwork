@@ -5,7 +5,7 @@ machines (Cutter, Paint Booth, Stamper, Polisher, Sorter, Packager), and every m
 for quality. Better quality means more coins; coins buy upgrades; XP unlocks new machines, products and
 factory themes.
 
-- Six machines and four products, with Perfect streaks and rare Golden orders
+- Six machines and five products, with Perfect streaks and rare Golden orders
 - Works with mouse, pen and touch
 - Light and dark modes, five factory themes, reduced-motion and sound settings
 - Frontend only: a static site with progress saved in the browser (`localStorage`)
@@ -30,15 +30,15 @@ Then open http://localhost:3000.
 ## What is in the MVP
 
 - Machines: Cutter, Stamper, Polisher, Packager, Paint Booth, Sorter
-- Products: Wood Block, Soap Bar (gains a Polisher step once the Polisher unlocks), Ceramic Coaster, Crystal
+- Products: Wood Block, Soap Bar (gains a Polisher step once the Polisher unlocks), Ceramic Coaster, Crystal, Gold Ingot
 - Quality scoring, coins, XP, Factory Level, level-gated unlocks
 - Upgrades: Better Materials, Golden Touch (plus one scripted Golden Product at level 5)
 - Perfect streak with a capped coin bonus
 - Five factory themes, light/dark/system UI mode, reduced motion, particle density
 - Sound settings, versioned local save with validation and a corrupt-save fallback
 
-The Assembler has no playable module yet, and Gold Ingot is held back (`released: false` in
-`src/config/products.ts`); both show as locked.
+The Assembler has no playable module yet and shows as locked. A product can be held back from players
+with `released: false` in `src/config/products.ts`.
 
 ## Where things live
 

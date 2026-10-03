@@ -219,7 +219,7 @@ export function SorterMachine({ runId, material, isGolden, active, onInteraction
             width: `${(BIN.w / STAGE.w) * 100}%`,
             height: `${((BIN.h + 20) / STAGE.h) * 100}%`,
           }}
-          aria-label={`${bin.label} bin. The gem at the gate is ${shape.label.toLowerCase()}.`}
+          aria-label={`${bin.label} bin. The piece at the gate is ${shape.label.toLowerCase()}.`}
           disabled={!active || allSorted}
           onPointerDown={(event) => {
             if (event.pointerType === "mouse" && event.button !== 0) return;
