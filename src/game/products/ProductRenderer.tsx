@@ -51,10 +51,11 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
   const shine = Math.min(1, (isGolden ? 0.85 : profile.shineIntensity) + richness * 0.3 + polish);
   const grain = profile.colorTreatment === "grain" && !isGolden;
   const bevel = profile.colorTreatment === "bevel";
-  const facet = profile.colorTreatment === "facet" || bevel;
-  // Corners of the outer face and of the flat top: the "table" of a cut stone,
-  // or the wider top of a cast bar with sloped sides.
-  const inset = bevel ? { x: w * 0.09, y: h * 0.15 } : { x: w * 0.2, y: h * 0.24 };
+  const facet = profile.colorTreatment === "facet";
+  // Corners of the outer face and of the flat "table" in the middle of a cut stone.
+  const inset = { x: w * 0.2, y: h * 0.24 };
+  // A cast bar: a smooth raised top face, set in from softly sloped sides.
+  const top = { x: x + w * 0.08, y: y + h * 0.13, w: w * 0.84, h: h * 0.7, r: Math.max(2, r * 0.55) };
   const [ox1, oy1, ox2, oy2] = [x, y, x + w, y + h];
   const [ix1, iy1, ix2, iy2] = [x + inset.x, y + inset.y, x + w - inset.x, y + h - inset.y];
   // Seams are recorded where the Cutter made them; map that space onto this rect.
@@ -126,7 +127,29 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
           </g>
         )}
 
-        {!grain && !facet && (
+        {bevel && (
+          <g>
+            {/* Sloped sides: lit from above, in shadow below. No hard edges, unlike a cut stone. */}
+            <rect x={x} y={y} width={w} height={h * 0.5} fill="#ffffff" fillOpacity="0.12" />
+            <rect x={x} y={y + h * 0.78} width={w} height={h * 0.22} fill="#000000" fillOpacity="0.16" />
+            <rect x={top.x} y={top.y + top.h * 0.04} width={top.w} height={top.h} rx={top.r} fill="#000000" fillOpacity="0.14" />
+            <rect x={top.x} y={top.y} width={top.w} height={top.h} rx={top.r} fill={`url(#${id}-fill)`} />
+            <rect x={top.x} y={top.y} width={top.w} height={top.h * 0.5} rx={top.r} fill={`url(#${id}-gloss)`} />
+            <rect
+              x={top.x}
+              y={top.y}
+              width={top.w}
+              height={top.h}
+              rx={top.r}
+              fill="none"
+              stroke="#ffffff"
+              strokeOpacity="0.4"
+              strokeWidth={Math.max(1, h * 0.01)}
+            />
+          </g>
+        )}
+
+        {!grain && !facet && !bevel && (
           <rect
             x={x + w * 0.07}
             y={y + h * 0.1}
