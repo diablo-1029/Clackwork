@@ -3,9 +3,9 @@
 import { motion } from "framer-motion";
 import { Fragment } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { machines } from "@/config/machines";
 import { products } from "@/config/products";
 import { finishedLook } from "@/game/products/productLook";
+import { stepName } from "@/game/progression/unlocks";
 import { ProductIcon } from "@/game/products/ProductRenderer";
 import type { ProductionRun } from "@/types/game";
 
@@ -44,7 +44,7 @@ export function OrderIntro({ run, onSkip }: { run: ProductionRun; onSkip: () => 
           {run.machineSequence.map((id, index) => (
             <Fragment key={`${id}-${index}`}>
               {index > 0 && <Icon name="arrowRight" size={14} className="text-muted" />}
-              <span className="rounded-lg bg-surface-2 px-2 py-1">{machines[id].name}</span>
+              <span className="rounded-lg bg-surface-2 px-2 py-1">{stepName(product, run.machineSequence, index)}</span>
             </Fragment>
           ))}
         </p>

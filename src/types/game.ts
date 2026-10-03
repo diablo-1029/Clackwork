@@ -99,6 +99,13 @@ export interface ProductDefinition {
   unlockLevel: number;
   baseValue: number;
   machineSequence: MachineId[];
+  /**
+   * Optional name per step, aligned with `machineSequence`, for products that
+   * visit one machine several times. `null` falls back to the machine's name.
+   */
+  stepLabels?: (string | null)[];
+  /** Optional instruction per step, aligned with `machineSequence`; `null` uses the machine's own. */
+  stepHints?: (string | null)[];
   /** Later variants win; used when a newly unlocked machine extends the chain. */
   sequenceVariants?: SequenceVariant[];
   /** Set to false to keep a product locked even though every machine it needs exists. */

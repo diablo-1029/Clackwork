@@ -7,6 +7,7 @@ import {
   machinesUnlockedAt,
   productsUnlockedAt,
   resolveMachineSequence,
+  stepName,
 } from "./unlocks";
 import { canPurchaseUpgrade, getUpgradeCost } from "./upgradeLogic";
 
@@ -69,6 +70,21 @@ describe("unlocks", () => {
     expect(machinesUnlockedAt(12)).toContain("assembler");
     expect(productsUnlockedAt(12)).toContain("toyRobot");
     expect(getUnlocksAtLevel(12).map((u) => u.id).sort()).toEqual(["assembler", "candyLine", "toyRobot"]);
+  });
+
+  it("names repeated steps by what they build, and other steps by their machine", () => {
+    const sequence = products.toyRobot.machineSequence;
+    expect(sequence.map((_, i) => stepName(products.toyRobot, sequence, i))).toEqual([
+      "Paint Booth",
+      "Head",
+      "Arms",
+      "Legs",
+      "Torso",
+      "Build",
+      "Packager",
+    ]);
+    const wood = products.woodBlock.machineSequence;
+    expect(wood.map((_, i) => stepName(products.woodBlock, wood, i))).toEqual(["Cutter", "Packager"]);
   });
 
   it("unlocks Gold Ingot at level 15", () => {

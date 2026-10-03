@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { Point } from "@/lib/math";
 import { calculateCutterQuality, isCutAttempt } from "./cutter/cutterScoring";
 import {
+  assemblerTuning,
   calculateAssemblerQuality,
   partAt,
   resolveDrop,
-  robotParts,
-  robotSockets,
+  robotStages,
+  stageForStep,
 } from "./assembler/assemblerScoring";
 import { cutPatterns, getCutPattern, pickCutPattern, pieceShift, splitAlong } from "./cutter/cutterGeometry";
 import { calculatePackagerQuality } from "./packager/packagerScoring";
@@ -323,82 +324,121 @@ describe("sorter scoring", () => {
 });
 
 describe("assembler scoring", () => {
-  const socket = (id: string) => robotSockets.find((s) => s.id === id)!.at;
-  const near = (id: string, dx: number) => ({ x: socket(id).x + dx, y: socket(id).y });
+  const stage = (id: string) => robotStages.find((s) => s.id === id)!;
+  const final = stage("final");
+  const head = stage("head");
+  const socket = (st: typeof final, id: string) => st.sockets.find((s) => s.id === id)!.at;
+  const socketOfKind = (st: typeof final, kind: string, nth = 0) => st.sockets.filter((s) => s.kind === kind)[nth];
+  const partOfKind = (st: typeof final, kind: string, nth = 0) => st.parts.filter((p) => p.kind === kind)[nth];
 
-  it("has a head, two arms and two legs to attach", () => {
-    expect(robotParts.map((p) => p.kind).sort()).toEqual(["arm", "arm", "head", "leg", "leg"]);
-    expect(robotSockets.map((s) => s.kind).sort()).toEqual(["arm", "arm", "head", "leg", "leg"]);
+  it("builds the robot in five steps: head, arms, legs, torso, then the whole thing", () => {
+    expect(robotStages.map((s) => s.id)).toEqual(["head", "arms", "legs", "torso", "final"]);
+    expect(stageForStep(0).id).toBe("head");
+    expect(stageForStep(4).id).toBe("final");
+    expect(stageForStep(99).id).toBe("final");
+    expect(stageForStep(-1).id).toBe("head");
+  });
+
+  it("gives every step exactly the parts its sockets need", () => {
+    for (const st of robotStages) {
+      expect(st.parts.map((p) => p.kind).sort()).toEqual(st.sockets.map((s) => s.kind).sort());
+    }
+    expect(head.parts.map((p) => p.kind).sort()).toEqual(["aerial", "eye", "eye", "mouth"]);
+    expect(stage("arms").parts.map((p) => p.kind).sort()).toEqual(["gripper", "gripper", "shoulder", "shoulder"]);
+    expect(stage("legs").parts.map((p) => p.kind).sort()).toEqual(["foot", "foot", "knee", "knee"]);
+    expect(stage("torso").parts.map((p) => p.kind).sort()).toEqual(["belt", "buttons", "gauge", "neck"]);
+    expect(final.parts.map((p) => p.kind).sort()).toEqual(["arm", "arm", "head", "leg", "leg"]);
+  });
+
+  it("keeps every step unambiguous to play", () => {
+    for (const st of robotStages) {
+      // Sockets for different parts never overlap in snapping range.
+      for (const a of st.sockets) for (const b of st.sockets) {
+        if (a.kind !== b.kind) {
+          expect(Math.hypot(a.at.x - b.at.x, a.at.y - b.at.y)).toBeGreaterThan(assemblerTuning.snapRadius * 2);
+        }
+      }
+      // Loose parts are far enough apart to grab the one you mean.
+      for (const a of st.parts) for (const b of st.parts) {
+        if (a !== b) expect(Math.hypot(a.tray.x - b.tray.x, a.tray.y - b.tray.y)).toBeGreaterThan(50);
+      }
+      // Nothing waits in the tray within snapping range of a socket, and everything is on the stage.
+      for (const part of st.parts) {
+        expect(part.tray.x).toBeGreaterThan(20);
+        expect(part.tray.x).toBeLessThan(380);
+        expect(part.tray.y).toBeLessThan(290);
+        for (const s of st.sockets) {
+          expect(Math.hypot(part.tray.x - s.at.x, part.tray.y - s.at.y)).toBeGreaterThan(60);
+        }
+      }
+    }
   });
 
   it("scores exact drops with no wrong sockets as Perfect", () => {
-    expect(calculateAssemblerQuality({ offsets: [0, 3, 8, 9, 5], wrongDrops: 0 })).toBe(100);
+    expect(calculateAssemblerQuality(final, { offsets: [0, 3, 8, 9, 5], wrongDrops: 0 })).toBe(100);
+    expect(calculateAssemblerQuality(head, { offsets: [0, 3, 8, 9], wrongDrops: 0 })).toBe(100);
   });
 
   it("scores sloppy but valid drops lower", () => {
-    const sloppy = calculateAssemblerQuality({ offsets: [20, 20, 20, 20, 20], wrongDrops: 0 });
+    const sloppy = calculateAssemblerQuality(head, { offsets: [20, 20, 20, 20], wrongDrops: 0 });
     expect(sloppy).toBeLessThan(90);
     expect(sloppy).toBeGreaterThan(40);
-    expect(calculateAssemblerQuality({ offsets: [26, 26, 26, 26, 26], wrongDrops: 0 })).toBe(25);
+    expect(calculateAssemblerQuality(head, { offsets: [26, 26, 26, 26], wrongDrops: 0 })).toBe(25);
   });
 
   it("charges for each wrong socket, up to a cap", () => {
-    const exact = [0, 0, 0, 0, 0];
-    expect(calculateAssemblerQuality({ offsets: exact, wrongDrops: 1 })).toBe(92);
-    expect(calculateAssemblerQuality({ offsets: exact, wrongDrops: 3 })).toBe(75);
-    expect(calculateAssemblerQuality({ offsets: exact, wrongDrops: 30 })).toBe(75);
+    const exact = [0, 0, 0, 0];
+    expect(calculateAssemblerQuality(head, { offsets: exact, wrongDrops: 1 })).toBe(92);
+    expect(calculateAssemblerQuality(head, { offsets: exact, wrongDrops: 3 })).toBe(75);
+    expect(calculateAssemblerQuality(head, { offsets: exact, wrongDrops: 30 })).toBe(75);
   });
 
   it("cannot score well with parts missing", () => {
-    expect(calculateAssemblerQuality({ offsets: [0, 0], wrongDrops: 0 })).toBe(55);
-    expect(calculateAssemblerQuality({ offsets: [], wrongDrops: 0 })).toBe(25);
+    expect(calculateAssemblerQuality(final, { offsets: [0, 0], wrongDrops: 0 })).toBe(55);
+    expect(calculateAssemblerQuality(final, { offsets: [], wrongDrops: 0 })).toBe(25);
   });
 
   it("places a part released on its own socket", () => {
-    expect(resolveDrop("head", near("head", 4), [])).toEqual({ kind: "placed", socketId: "head", offset: 4 });
+    const at = socket(final, "head");
+    expect(resolveDrop(final, "head", { x: at.x + 4, y: at.y }, [])).toEqual({ kind: "placed", socketId: "head", offset: 4 });
   });
 
-  it("lets either arm or leg go on either side", () => {
-    expect(resolveDrop("armA", near("armRight", 0), [])).toMatchObject({ kind: "placed", socketId: "armRight" });
-    expect(resolveDrop("armB", near("armLeft", 0), ["armRight"])).toMatchObject({ kind: "placed", socketId: "armLeft" });
-    expect(resolveDrop("legB", near("legLeft", 0), [])).toMatchObject({ kind: "placed", socketId: "legLeft" });
+  it("lets matching parts go in either of their sockets", () => {
+    expect(resolveDrop(final, "armA", socket(final, "armRight"), [])).toMatchObject({ kind: "placed", socketId: "armRight" });
+    expect(resolveDrop(final, "armB", socket(final, "armLeft"), ["armRight"])).toMatchObject({ kind: "placed", socketId: "armLeft" });
+
+    const eye = partOfKind(head, "eye", 0);
+    const farEyeSocket = socketOfKind(head, "eye", 1);
+    expect(resolveDrop(head, eye.id, farEyeSocket.at, [])).toMatchObject({ kind: "placed", socketId: farEyeSocket.id });
   });
 
   it("never treats a leg dropped between the two leg sockets as a mistake", () => {
-    const between = { x: (socket("legLeft").x + socket("legRight").x) / 2, y: socket("legLeft").y };
-    expect(resolveDrop("legA", between, []).kind).toBe("placed");
+    const left = socket(final, "legLeft");
+    const between = { x: (left.x + socket(final, "legRight").x) / 2, y: left.y };
+    expect(resolveDrop(final, "legA", between, []).kind).toBe("placed");
     // With one side taken, it goes to the side that is still free.
-    expect(resolveDrop("legA", between, ["legLeft"])).toMatchObject({ kind: "placed", socketId: "legRight" });
+    expect(resolveDrop(final, "legA", between, ["legLeft"])).toMatchObject({ kind: "placed", socketId: "legRight" });
   });
 
   it("reports a wrong socket, and a miss in empty space", () => {
-    expect(resolveDrop("head", near("armLeft", 2), [])).toEqual({ kind: "wrong", socketId: "armLeft" });
-    expect(resolveDrop("armA", near("legRight", 0), [])).toEqual({ kind: "wrong", socketId: "legRight" });
-    expect(resolveDrop("head", { x: 20, y: 290 }, [])).toEqual({ kind: "miss" });
-    expect(resolveDrop("nonsense", near("head", 0), [])).toEqual({ kind: "miss" });
+    expect(resolveDrop(final, "head", socket(final, "armLeft"), [])).toEqual({ kind: "wrong", socketId: "armLeft" });
+    const mouth = partOfKind(head, "mouth");
+    const eyeSocket = socketOfKind(head, "eye");
+    expect(resolveDrop(head, mouth.id, eyeSocket.at, [])).toEqual({ kind: "wrong", socketId: eyeSocket.id });
+    expect(resolveDrop(final, "head", { x: 200, y: 292 }, [])).toEqual({ kind: "miss" });
+    expect(resolveDrop(final, "nonsense", socket(final, "head"), [])).toEqual({ kind: "miss" });
+    // A part from another step does not exist here.
+    expect(resolveDrop(head, "armA", socketOfKind(head, "eye").at, [])).toEqual({ kind: "miss" });
   });
 
   it("does not reuse a filled socket", () => {
-    expect(resolveDrop("head", near("head", 0), ["head"])).toEqual({ kind: "miss" });
+    expect(resolveDrop(final, "head", socket(final, "head"), ["head"])).toEqual({ kind: "miss" });
   });
 
   it("picks up the nearest loose part, never a placed one", () => {
-    const head = robotParts.find((p) => p.id === "head")!;
-    expect(partAt({ x: head.tray.x + 5, y: head.tray.y }, [])?.id).toBe("head");
-    expect(partAt({ x: head.tray.x + 5, y: head.tray.y }, ["head"])).toBeNull();
-    expect(partAt({ x: 200, y: 290 }, [])).toBeNull();
-  });
-
-  it("keeps sockets of different kinds, and tray spots, far enough apart to tell apart", () => {
-    for (const a of robotSockets) for (const b of robotSockets) {
-      if (a.kind !== b.kind) expect(Math.hypot(a.at.x - b.at.x, a.at.y - b.at.y)).toBeGreaterThan(52);
-    }
-    for (const a of robotParts) for (const b of robotParts) {
-      if (a !== b) expect(Math.hypot(a.tray.x - b.tray.x, a.tray.y - b.tray.y)).toBeGreaterThan(76);
-    }
-    // Nothing waits in a tray within snapping range of a socket.
-    for (const part of robotParts) for (const s of robotSockets) {
-      expect(Math.hypot(part.tray.x - s.at.x, part.tray.y - s.at.y)).toBeGreaterThan(60);
-    }
+    const part = final.parts.find((p) => p.id === "head")!;
+    expect(partAt(final, { x: part.tray.x + 5, y: part.tray.y }, [])?.id).toBe("head");
+    expect(partAt(final, { x: part.tray.x + 5, y: part.tray.y }, ["head"])).toBeNull();
+    expect(partAt(final, { x: 200, y: 292 }, [])).toBeNull();
   });
 });

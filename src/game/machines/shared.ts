@@ -24,6 +24,8 @@ export interface MachineProps {
   /** Marks earlier machines left on this product. */
   look: ProductLook;
   factoryLevel: number;
+  /** How many times this machine has already run earlier in this product's chain. */
+  step: number;
   /** Input is accepted only while true. */
   active: boolean;
   /** Show the extra first-time hint animation. */

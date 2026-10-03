@@ -2,9 +2,9 @@
 
 import { Fragment } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { machineList, machines } from "@/config/machines";
+import { machineList } from "@/config/machines";
 import { productList } from "@/config/products";
-import { isProductPlayable, resolveMachineSequence } from "@/game/progression/unlocks";
+import { isProductPlayable, resolveMachineSequence, stepName } from "@/game/progression/unlocks";
 import { finishedLook } from "@/game/products/productLook";
 import { ProductIcon } from "@/game/products/ProductRenderer";
 import { useProgressionStore } from "@/stores/progressionStore";
@@ -37,7 +37,7 @@ export function ProductsScreen() {
                   {sequence.map((id, index) => (
                     <Fragment key={`${id}-${index}`}>
                       {index > 0 && <Icon name="arrowRight" size={12} />}
-                      <span>{machines[id].name}</span>
+                      <span>{stepName(product, sequence, index)}</span>
                     </Fragment>
                   ))}
                 </p>

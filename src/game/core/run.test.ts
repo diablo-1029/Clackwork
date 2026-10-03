@@ -319,7 +319,7 @@ describe("gold ingot", () => {
 });
 
 describe("toy robot", () => {
-  it("arrives as the next order at level 12 and is painted before it is assembled", () => {
+  it("arrives as the next order at level 12 and is painted, built in five steps, then boxed", () => {
     usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 12 });
     useProgressionStore.getState().syncUnlocks(12);
     useProgressionStore.getState().setOnboarding("hasSeenGoldenIntro");
@@ -327,17 +327,27 @@ describe("toy robot", () => {
 
     const order = createOrder();
     expect(order?.productId).toBe("toyRobot");
-    expect(order?.machineSequence).toEqual(["paintBooth", "assembler", "packager"]);
+    expect(order?.machineSequence).toEqual([
+      "paintBooth",
+      "assembler",
+      "assembler",
+      "assembler",
+      "assembler",
+      "assembler",
+      "packager",
+    ]);
 
     run().dispatch("INTRO_DONE");
     order!.machineSequence.forEach(() => playMachine(100));
     const summary = finishProduct();
 
     expect(run().run?.results.map((r) => r.machineId)).toEqual(order!.machineSequence);
-    // 50 x 1.30 (Perfect) x 1.05 (streak of 3) = 68.25, rounded to 68
-    expect(summary).toMatchObject({ productId: "toyRobot", quality: 100, coins: 68 });
+    // Seven results, one per step, even though five of them are the same machine.
+    expect(run().run?.results).toHaveLength(7);
+    // 90 x 1.30 (Perfect) x 1.10 (streak of 7) = 128.7, rounded to 129
+    expect(summary).toMatchObject({ productId: "toyRobot", quality: 100, coins: 129 });
     expect(finishProduct()).toBeNull();
-    expect(player().coins).toBe(68);
+    expect(player().coins).toBe(129);
   });
 });
 

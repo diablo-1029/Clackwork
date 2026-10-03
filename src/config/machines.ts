@@ -64,7 +64,7 @@ export const machines: Record<MachineId, MachineDefinition> = {
   assembler: {
     id: "assembler",
     name: "Assembler",
-    description: "Builds the product from its parts.",
+    description: "Builds each section from its parts, then the whole product.",
     instruction: "Snap each part into place.",
     unlockLevel: 12,
     estimatedDurationSeconds: 10,

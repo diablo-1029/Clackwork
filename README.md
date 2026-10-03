@@ -30,6 +30,7 @@ Then open http://localhost:3000.
 ## What is in the MVP
 
 - Machines: Cutter, Stamper, Polisher, Packager, Paint Booth, Sorter, Assembler
+- The Toy Robot visits the Assembler five times: head, arms, legs, torso, then the final build
 - Products: Wood Block, Soap Bar (gains a Polisher step once the Polisher unlocks), Ceramic Coaster, Crystal, Toy Robot, Gold Ingot
 - Quality scoring, coins, XP, Factory Level, level-gated unlocks
 - Upgrades: Better Materials, Golden Touch (plus one scripted Golden Product at level 5)

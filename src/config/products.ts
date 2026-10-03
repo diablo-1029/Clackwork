@@ -59,11 +59,24 @@ export const products: Record<ProductId, ProductDefinition> = {
   toyRobot: {
     id: "toyRobot",
     name: "Toy Robot",
-    description: "Painted, then built up: head, arms and legs.",
+    description: "Each section is built on its own, then put together.",
     unlockLevel: 12,
-    baseValue: 50,
+    // The longest chain in the factory, so the most valuable product.
+    baseValue: 90,
     // Painted first: the Paint Booth sets the colour every part is made in.
-    machineSequence: ["paintBooth", "assembler", "packager"],
+    // The Assembler is then visited once per section, and once more for the final build
+    // (the steps themselves are defined in machines/assembler/assemblerScoring.ts).
+    machineSequence: ["paintBooth", "assembler", "assembler", "assembler", "assembler", "assembler", "packager"],
+    stepLabels: [null, "Head", "Arms", "Legs", "Torso", "Build", null],
+    stepHints: [
+      null,
+      "Fit the eyes, mouth and aerial.",
+      "Fit a shoulder and a gripper to each arm.",
+      "Fit a knee guard and a foot to each leg.",
+      "Fit the gauge, buttons, neck and belt.",
+      "Attach the head, arms and legs.",
+      null,
+    ],
     orderWeight: 20,
     visualKey: "toy-robot",
     materialProfile: "plastic",

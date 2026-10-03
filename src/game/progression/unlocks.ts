@@ -32,6 +32,15 @@ export function resolveMachineSequence(
   return sequence;
 }
 
+/** What to call step `index` of a product's chain: its own label if it has one, else the machine's name. */
+export function stepName(product: ProductDefinition, sequence: MachineId[], index: number): string {
+  // Labels describe the product's base chain; a variant chain (different steps) does not get them.
+  const base = product.machineSequence;
+  const sameChain = sequence.length === base.length && sequence.every((id, i) => id === base[i]);
+  const label = sameChain ? product.stepLabels?.[index] : null;
+  return label ?? machines[sequence[index]]?.name ?? "";
+}
+
 export type UnlockKind = "machine" | "product" | "upgrade" | "theme" | "feature";
 
 export interface UnlockEntry {

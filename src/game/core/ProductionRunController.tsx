@@ -135,6 +135,8 @@ export function ProductionRunController() {
   const product = products[run.productId] ?? products.woodBlock;
   const machineId = run.machineSequence[run.currentMachineIndex];
   const machine = machines[machineId];
+  const stepLabel = product.stepLabels?.[run.currentMachineIndex] ?? null;
+  const instruction = product.stepHints?.[run.currentMachineIndex] ?? machine.instruction;
   const machineVisible = MACHINE_PHASES.includes(phase);
   const interactive = phase === "MACHINE_READY" || phase === "PLAYER_INTERACTION";
   const showingResult = (phase === "MACHINE_RESOLVE" || phase === "RESULT_FEEDBACK") && feedback;
@@ -209,6 +211,7 @@ export function ProductionRunController() {
                 richness={materialsLevel / upgrades.betterMaterials.maxLevel}
                 look={look}
                 factoryLevel={factoryLevel}
+                step={run.machineSequence.slice(0, run.currentMachineIndex).filter((id) => id === machineId).length}
                 active={interactive}
                 showHint={showHint}
                 onInteractionStart={() => dispatch("INTERACTION_START")}
@@ -226,8 +229,11 @@ export function ProductionRunController() {
             machineVisible &&
             phase !== "MACHINE_EXIT" && (
               <>
-                <p className="text-[11px] font-black tracking-[0.2em] text-stage-soft uppercase">{machine.name}</p>
-                <p className="text-lg font-extrabold text-stage-ink sm:text-xl">{machine.instruction}</p>
+                <p className="text-[11px] font-black tracking-[0.2em] text-stage-soft uppercase">
+                  {machine.name}
+                  {stepLabel && ` · ${stepLabel}`}
+                </p>
+                <p className="text-lg font-extrabold text-stage-ink sm:text-xl">{instruction}</p>
               </>
             )
           )}
