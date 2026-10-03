@@ -8,6 +8,7 @@ import { isProductPlayable } from "@/game/progression/unlocks";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useProgressionStore } from "@/stores/progressionStore";
 import { useUiStore } from "@/stores/uiStore";
+import type { ProductId } from "@/types/game";
 
 /**
  * Development-only tools. The settings screen renders this behind a
@@ -17,6 +18,12 @@ export function DebugPanel() {
   const level = usePlayerStore((s) => s.factoryLevel);
   const debug = useUiStore((s) => s.debug);
   const setDebug = useUiStore((s) => s.setDebug);
+  const queuedProducts = useUiStore((s) => s.queuedProducts);
+
+  // Replaces whatever is queued, so the choice here is always the very next order.
+  const setNextProduct = (id: ProductId | "") => {
+    useUiStore.setState({ queuedProducts: id ? [id] : [] });
+  };
 
   const setLevel = (next: number) => {
     usePlayerStore.getState().setLevel(next);
@@ -55,6 +62,24 @@ export function DebugPanel() {
           Particle Stress Test
         </Button>
       </div>
+      <label className="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold">
+        Next product
+        <select
+          value={queuedProducts[0] ?? ""}
+          onChange={(event) => setNextProduct(event.target.value as ProductId | "")}
+          className="h-11 rounded-xl border border-line bg-surface px-2"
+        >
+          <option value="">Random (normal)</option>
+          {productList.filter(isProductPlayable).map((product) => (
+            <option key={product.id} value={product.id}>
+              {product.name}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs font-bold text-muted">
+          Applies to the next order created, even if the product is still locked.
+        </span>
+      </label>
       <label className="mt-3 flex items-center gap-2 text-sm font-bold">
         Quality override
         <input
