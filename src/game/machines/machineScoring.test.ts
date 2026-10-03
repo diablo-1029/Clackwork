@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Point } from "@/lib/math";
 import { calculateCutterQuality, isCutAttempt } from "./cutter/cutterScoring";
+import {
+  calculateAssemblerQuality,
+  partAt,
+  resolveDrop,
+  robotParts,
+  robotSockets,
+} from "./assembler/assemblerScoring";
 import { cutPatterns, getCutPattern, pickCutPattern, pieceShift, splitAlong } from "./cutter/cutterGeometry";
 import { calculatePackagerQuality } from "./packager/packagerScoring";
 import {
@@ -312,5 +319,68 @@ describe("sorter scoring", () => {
       }
     }
     expect(new Set(createSortQueue("short", 2)).size).toBe(2);
+  });
+});
+
+describe("assembler scoring", () => {
+  const socket = (id: string) => robotSockets.find((s) => s.id === id)!.at;
+  const near = (id: string, dx: number) => ({ x: socket(id).x + dx, y: socket(id).y });
+
+  it("scores exact drops with no wrong sockets as Perfect", () => {
+    expect(calculateAssemblerQuality({ offsets: [0, 3, 8, 9], wrongDrops: 0 })).toBe(100);
+  });
+
+  it("scores sloppy but valid drops lower", () => {
+    const sloppy = calculateAssemblerQuality({ offsets: [20, 20, 20, 20], wrongDrops: 0 });
+    expect(sloppy).toBeLessThan(90);
+    expect(sloppy).toBeGreaterThan(40);
+    expect(calculateAssemblerQuality({ offsets: [26, 26, 26, 26], wrongDrops: 0 })).toBe(25);
+  });
+
+  it("charges for each wrong socket, up to a cap", () => {
+    const exact = [0, 0, 0, 0];
+    expect(calculateAssemblerQuality({ offsets: exact, wrongDrops: 1 })).toBe(92);
+    expect(calculateAssemblerQuality({ offsets: exact, wrongDrops: 3 })).toBe(75);
+    expect(calculateAssemblerQuality({ offsets: exact, wrongDrops: 30 })).toBe(75);
+  });
+
+  it("cannot score well with parts missing", () => {
+    expect(calculateAssemblerQuality({ offsets: [0, 0], wrongDrops: 0 })).toBeLessThanOrEqual(63);
+    expect(calculateAssemblerQuality({ offsets: [], wrongDrops: 0 })).toBe(25);
+  });
+
+  it("places a part released on its own socket", () => {
+    expect(resolveDrop("mouth", near("mouth", 4), [])).toEqual({ kind: "placed", socketId: "mouth", offset: 4 });
+  });
+
+  it("lets either eye go in either eye socket", () => {
+    expect(resolveDrop("eyeA", near("eyeRight", 0), [])).toMatchObject({ kind: "placed", socketId: "eyeRight" });
+    expect(resolveDrop("eyeB", near("eyeLeft", 0), ["eyeRight"])).toMatchObject({ kind: "placed", socketId: "eyeLeft" });
+  });
+
+  it("reports a wrong socket, and a miss in empty space", () => {
+    expect(resolveDrop("mouth", near("eyeLeft", 2), [])).toEqual({ kind: "wrong", socketId: "eyeLeft" });
+    expect(resolveDrop("mouth", { x: 20, y: 20 }, [])).toEqual({ kind: "miss" });
+    expect(resolveDrop("nonsense", near("mouth", 0), [])).toEqual({ kind: "miss" });
+  });
+
+  it("does not reuse a filled socket", () => {
+    expect(resolveDrop("eyeB", near("eyeLeft", 0), ["eyeLeft"])).toEqual({ kind: "miss" });
+  });
+
+  it("picks up the nearest loose part, never a placed one", () => {
+    const mouth = robotParts.find((p) => p.id === "mouth")!;
+    expect(partAt({ x: mouth.tray.x + 5, y: mouth.tray.y }, [])?.id).toBe("mouth");
+    expect(partAt({ x: mouth.tray.x + 5, y: mouth.tray.y }, ["mouth"])).toBeNull();
+    expect(partAt({ x: 5, y: 5 }, [])).toBeNull();
+  });
+
+  it("keeps sockets and tray spots apart enough to tell drops and grabs apart", () => {
+    for (const a of robotSockets) for (const b of robotSockets) {
+      if (a !== b) expect(Math.hypot(a.at.x - b.at.x, a.at.y - b.at.y)).toBeGreaterThan(52);
+    }
+    for (const a of robotParts) for (const b of robotParts) {
+      if (a !== b) expect(Math.hypot(a.tray.x - b.tray.x, a.tray.y - b.tray.y)).toBeGreaterThan(60);
+    }
   });
 });

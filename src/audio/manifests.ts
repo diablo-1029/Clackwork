@@ -19,6 +19,7 @@ export const soundChannels: Record<SoundKey, AudioChannel> = {
   polishDone: "machine",
   sortDrop: "machine",
   sortMiss: "machine",
+  snapIn: "machine",
   tapeSnap: "machine",
   boxClose: "machine",
   rewardGood: "reward",

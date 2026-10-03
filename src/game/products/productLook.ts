@@ -1,5 +1,6 @@
 import { getCutPattern, type CutSegment } from "@/game/machines/cutter/cutterGeometry";
-import type { MachineResult } from "@/types/game";
+import type { MachineResult, ProductDefinition } from "@/types/game";
+import { goldenColors, materialProfiles } from "./materialProfiles";
 
 /** Width of the Stamper's slab, which stamp offsets are measured against. */
 const STAMP_REFERENCE_WIDTH = 160;
@@ -20,6 +21,8 @@ export interface ProductLook {
   stamp?: StampMark;
   /** The glaze the Paint Booth applied. */
   paint?: { color: string };
+  /** The Assembler has snapped every part on. */
+  assembled?: boolean;
   polished: boolean;
 }
 
@@ -46,9 +49,22 @@ export function deriveProductLook(results: MachineResult[]): ProductLook {
     } else if (result.machineId === "paintBooth") {
       const glaze = result.metadata?.glaze;
       if (typeof glaze === "string") look.paint = { color: glaze };
+    } else if (result.machineId === "assembler") {
+      look.assembled = true;
     } else if (result.machineId === "polisher") {
       look.polished = true;
     }
   }
+  return look;
+}
+
+/** How a finished product looks, for icons and cards: painted and assembled where its chain says so. */
+export function finishedLook(product: ProductDefinition, isGolden = false): ProductLook {
+  const look: ProductLook = { cuts: [], polished: false };
+  if (product.machineSequence.includes("paintBooth")) {
+    const glaze = isGolden ? goldenColors.base : materialProfiles[product.materialProfile].glazeColors?.[0];
+    if (glaze) look.paint = { color: glaze };
+  }
+  if (product.machineSequence.includes("assembler")) look.assembled = true;
   return look;
 }

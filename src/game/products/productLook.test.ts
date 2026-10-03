@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getCutPattern } from "@/game/machines/cutter/cutterGeometry";
 import type { MachineResult } from "@/types/game";
-import { deriveProductLook, stampMark } from "./productLook";
+import { products } from "@/config/products";
+import { deriveProductLook, finishedLook, stampMark } from "./productLook";
 
 const result = (machineId: MachineResult["machineId"], quality: number, metadata?: Record<string, unknown>): MachineResult => ({
   machineId,
@@ -50,6 +51,20 @@ describe("product look", () => {
     expect(deriveProductLook([result("paintBooth", 95, { glaze: "#2f7fd8" })]).paint).toEqual({ color: "#2f7fd8" });
     expect(deriveProductLook([result("paintBooth", 95, { glaze: 7 })]).paint).toBeUndefined();
     expect(deriveProductLook([result("paintBooth", 95)]).paint).toBeUndefined();
+  });
+
+  it("keeps the parts the Assembler put on", () => {
+    expect(deriveProductLook([result("assembler", 90)]).assembled).toBe(true);
+    expect(deriveProductLook([result("paintBooth", 90, { glaze: "#ef5350" })]).assembled).toBeUndefined();
+  });
+
+  it("describes how each finished product looks, for icons", () => {
+    expect(finishedLook(products.woodBlock)).toEqual({ cuts: [], polished: false });
+    expect(finishedLook(products.toyRobot)).toMatchObject({ assembled: true, paint: { color: "#ef5350" } });
+    expect(finishedLook(products.ceramicCoaster).paint).toBeDefined();
+    expect(finishedLook(products.ceramicCoaster).assembled).toBeUndefined();
+    // Golden orders are glazed gold, not in the product's usual colour.
+    expect(finishedLook(products.toyRobot, true).paint?.color).not.toBe("#ef5350");
   });
 
   it("ignores missing or unknown metadata", () => {

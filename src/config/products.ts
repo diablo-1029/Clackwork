@@ -56,6 +56,19 @@ export const products: Record<ProductId, ProductDefinition> = {
     rarity: "rare",
   },
 
+  toyRobot: {
+    id: "toyRobot",
+    name: "Toy Robot",
+    description: "Painted, then given a face, one part at a time.",
+    unlockLevel: 12,
+    baseValue: 50,
+    // Painted before assembly so the spray never buries the face.
+    machineSequence: ["paintBooth", "assembler", "packager"],
+    orderWeight: 20,
+    visualKey: "toy-robot",
+    materialProfile: "plastic",
+  },
+
   goldIngot: {
     id: "goldIngot",
     name: "Gold Ingot",

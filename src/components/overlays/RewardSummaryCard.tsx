@@ -10,6 +10,7 @@ import { products } from "@/config/products";
 import { getQualityLabel } from "@/game/economy/multipliers";
 import { xpRequired } from "@/game/progression/levels";
 import { getNextUnlock } from "@/game/progression/unlocks";
+import { finishedLook } from "@/game/products/productLook";
 import { ProductIcon } from "@/game/products/ProductRenderer";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -59,7 +60,7 @@ export function RewardSummaryCard({ reward, onNext }: { reward: RewardSummary; o
         }`}
         role="status"
       >
-        <ProductIcon material={product.materialProfile} isGolden={reward.isGolden} size={76} />
+        <ProductIcon material={product.materialProfile} isGolden={reward.isGolden} look={finishedLook(product, reward.isGolden)} size={76} />
         <h2 className="text-center text-xl font-black tracking-wide uppercase">
           {reward.isGolden ? "Golden " : ""}
           {product.name} complete

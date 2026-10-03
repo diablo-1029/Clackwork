@@ -5,6 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { machineList, machines } from "@/config/machines";
 import { productList } from "@/config/products";
 import { isProductPlayable, resolveMachineSequence } from "@/game/progression/unlocks";
+import { finishedLook } from "@/game/products/productLook";
 import { ProductIcon } from "@/game/products/ProductRenderer";
 import { useProgressionStore } from "@/stores/progressionStore";
 import { LockedTag, ScreenFrame } from "./ScreenFrame";
@@ -22,7 +23,7 @@ export function ProductsScreen() {
           return (
             <li key={product.id} className={`flex gap-3 rounded-2xl border border-line p-3 ${unlocked ? "" : "opacity-75"}`}>
               <div className="flex w-20 shrink-0 items-center justify-center rounded-xl bg-surface-2">
-                <ProductIcon material={product.materialProfile} size={64} locked={!unlocked} />
+                <ProductIcon material={product.materialProfile} look={finishedLook(product)} size={64} locked={!unlocked} />
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="flex items-center gap-1.5 font-black uppercase">

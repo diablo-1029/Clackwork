@@ -12,7 +12,8 @@ export type ProductId =
   | "soapBar"
   | "ceramicCoaster"
   | "crystal"
-  | "goldIngot";
+  | "goldIngot"
+  | "toyRobot";
 
 export type UpgradeId = "betterMaterials" | "goldenTouch";
 
@@ -23,7 +24,7 @@ export type ThemeId =
   | "candyLine"
   | "nightShift";
 
-export type MaterialProfile = "wood" | "soap" | "ceramic" | "crystal" | "gold";
+export type MaterialProfile = "wood" | "soap" | "ceramic" | "crystal" | "gold" | "plastic";
 
 export type ProductRarity = "common" | "rare";
 
@@ -38,6 +39,7 @@ export type SoundKey =
   | "polishDone"
   | "sortDrop"
   | "sortMiss"
+  | "snapIn"
   | "tapeSnap"
   | "boxClose"
   | "rewardGood"

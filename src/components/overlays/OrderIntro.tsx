@@ -5,6 +5,7 @@ import { Fragment } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { machines } from "@/config/machines";
 import { products } from "@/config/products";
+import { finishedLook } from "@/game/products/productLook";
 import { ProductIcon } from "@/game/products/ProductRenderer";
 import type { ProductionRun } from "@/types/game";
 
@@ -33,7 +34,7 @@ export function OrderIntro({ run, onSkip }: { run: ProductionRun; onSkip: () => 
             GOLDEN PRODUCT!
           </span>
         )}
-        <ProductIcon material={product.materialProfile} isGolden={run.isGolden} size={96} />
+        <ProductIcon material={product.materialProfile} isGolden={run.isGolden} look={finishedLook(product, run.isGolden)} size={96} />
         <h2 className="text-2xl font-black tracking-wide uppercase">{product.name}</h2>
         <p className="flex items-center gap-1.5 text-sm font-extrabold text-muted">
           Base Value: <Icon name="coin" size={16} /> {product.baseValue} Coins

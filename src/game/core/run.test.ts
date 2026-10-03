@@ -318,6 +318,29 @@ describe("gold ingot", () => {
   });
 });
 
+describe("toy robot", () => {
+  it("arrives as the next order at level 12 and is painted before it is assembled", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 12 });
+    useProgressionStore.getState().syncUnlocks(12);
+    useProgressionStore.getState().setOnboarding("hasSeenGoldenIntro");
+    useUiStore.getState().queueProducts(["toyRobot"]);
+
+    const order = createOrder();
+    expect(order?.productId).toBe("toyRobot");
+    expect(order?.machineSequence).toEqual(["paintBooth", "assembler", "packager"]);
+
+    run().dispatch("INTRO_DONE");
+    order!.machineSequence.forEach(() => playMachine(100));
+    const summary = finishProduct();
+
+    expect(run().run?.results.map((r) => r.machineId)).toEqual(order!.machineSequence);
+    // 50 x 1.30 (Perfect) x 1.05 (streak of 3) = 68.25, rounded to 68
+    expect(summary).toMatchObject({ productId: "toyRobot", quality: 100, coins: 68 });
+    expect(finishProduct()).toBeNull();
+    expect(player().coins).toBe(68);
+  });
+});
+
 describe("purchases", () => {
   it("is atomic and never leaves negative coins", () => {
     usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 2, coins: 60 });

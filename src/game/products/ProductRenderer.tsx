@@ -3,6 +3,7 @@ import { PRODUCT_RECT } from "@/game/machines/shared";
 import type { MaterialProfile } from "@/types/game";
 import { getMaterialColors, materialProfiles } from "./materialProfiles";
 import type { ProductLook, StampMark } from "./productLook";
+import { RobotFace } from "./RobotParts";
 
 interface Rect {
   x: number;
@@ -183,6 +184,9 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
         {look?.stamp && <ProductImprint rect={{ x, y, w, h }} mark={look.stamp} color={colors.dark} />}
       </g>
 
+      {/* Assembled parts sit on top of everything, and the antenna reaches past the top edge. */}
+      {look?.assembled && <RobotFace x={x} y={y} w={w} h={h} />}
+
       {isGolden &&
         [
           [0.16, 0.24, 1],
@@ -207,12 +211,17 @@ export function ProductIcon({
   isGolden = false,
   size = 56,
   locked = false,
+  look,
 }: {
   material: MaterialProfile;
   isGolden?: boolean;
   size?: number;
   locked?: boolean;
+  /** Usually `finishedLook(product)`, so the icon shows the product as it leaves the factory. */
+  look?: ProductLook;
 }) {
+  // Leave headroom for anything that sticks out above the body.
+  const body = look?.assembled ? { y: 12, h: 30 } : { y: 5, h: 34 };
   return (
     <svg
       width={size}
@@ -221,7 +230,7 @@ export function ProductIcon({
       aria-hidden
       style={locked ? { filter: "grayscale(1)", opacity: 0.45 } : undefined}
     >
-      <ProductBody material={material} isGolden={isGolden} x={6} y={5} w={52} h={34} r={7} />
+      <ProductBody material={material} isGolden={isGolden} look={look} x={6} y={body.y} w={52} h={body.h} r={7} />
     </svg>
   );
 }

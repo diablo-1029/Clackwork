@@ -63,18 +63,32 @@ describe("unlocks", () => {
     expect(getUnlocksAtLevel(10).map((u) => u.id).sort()).toEqual(["crystal", "sorter", "sunsetShift"]);
   });
 
+  it("unlocks the Assembler and Toy Robot together at level 12", () => {
+    expect(machinesUnlockedAt(11)).not.toContain("assembler");
+    expect(productsUnlockedAt(11)).not.toContain("toyRobot");
+    expect(machinesUnlockedAt(12)).toContain("assembler");
+    expect(productsUnlockedAt(12)).toContain("toyRobot");
+    expect(getUnlocksAtLevel(12).map((u) => u.id).sort()).toEqual(["assembler", "candyLine", "toyRobot"]);
+  });
+
   it("unlocks Gold Ingot at level 15", () => {
     expect(productsUnlockedAt(14)).not.toContain("goldIngot");
     expect(productsUnlockedAt(15)).toContain("goldIngot");
     expect(getUnlocksAtLevel(15).map((u) => u.id)).toEqual(["goldIngot"]);
-    expect(productsUnlockedAt(99).sort()).toEqual(["ceramicCoaster", "crystal", "goldIngot", "soapBar", "woodBlock"]);
+    expect(productsUnlockedAt(99).sort()).toEqual([
+      "ceramicCoaster",
+      "crystal",
+      "goldIngot",
+      "soapBar",
+      "toyRobot",
+      "woodBlock",
+    ]);
   });
 
   it("keeps a product locked while it is not released", () => {
     expect(isProductPlayable(products.goldIngot)).toBe(true);
     expect(isProductPlayable({ ...products.goldIngot, released: false })).toBe(false);
-    // The Assembler has no module, so anything that needs it stays locked too.
-    expect(isProductPlayable({ ...products.goldIngot, machineSequence: ["assembler", "packager"] })).toBe(false);
+    expect(isProductPlayable(products.toyRobot)).toBe(true);
   });
 
   it("extends the Soap Bar chain once the Polisher is owned", () => {

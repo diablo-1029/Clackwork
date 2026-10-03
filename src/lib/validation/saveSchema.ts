@@ -9,7 +9,7 @@ const machineId = z.enum([
   "sorter",
   "packager",
 ]);
-const productId = z.enum(["woodBlock", "soapBar", "ceramicCoaster", "crystal", "goldIngot"]);
+const productId = z.enum(["woodBlock", "soapBar", "ceramicCoaster", "crystal", "goldIngot", "toyRobot"]);
 const themeId = z.enum(["defaultFactory", "freshMint", "sunsetShift", "candyLine", "nightShift"]);
 
 const count = z.number().int().nonnegative();

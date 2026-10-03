@@ -230,6 +230,11 @@ class AudioManager {
           // Deliberately mild: a wrong bin is a small thing.
           this.tone(ch, { freq: 170, slideTo: 110, duration: 0.13, gain: 0.26, type: "triangle" });
           break;
+        case "snapIn":
+          // A part clicking home: a bright tick over a short, solid knock.
+          this.tone(ch, { freq: 1300, slideTo: 1900, duration: 0.04, gain: 0.22, type: "square" });
+          this.tone(ch, { freq: 240, slideTo: 150, duration: 0.07, gain: 0.4, type: "triangle" });
+          break;
         case "tapeSnap":
           this.noise(ch, { filter: "highpass", freq: 2600, duration: 0.05, gain: 0.6 });
           this.tone(ch, { freq: 1000, slideTo: 380, duration: 0.06, gain: 0.3, type: "triangle" });

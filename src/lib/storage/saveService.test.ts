@@ -73,6 +73,19 @@ describe("save service", () => {
     expect(migrated?.unlocks.products).toContain("soapBar");
   });
 
+  it("accepts saves with and without the newest product", () => {
+    const withRobot = createFreshSave();
+    withRobot.player.factoryLevel = 12;
+    withRobot.unlocks.products.push("toyRobot");
+    expect(migrateSave(withRobot)?.unlocks.products).toContain("toyRobot");
+
+    // A save written before the Toy Robot existed gains it from its level on load.
+    const older = createFreshSave();
+    older.player.factoryLevel = 12;
+    expect(migrateSave(older)?.unlocks.products).toContain("toyRobot");
+    expect(migrateSave(older)?.unlocks.machines).toContain("assembler");
+  });
+
   it("survives storage being unavailable or throwing", () => {
     expect(loadSave(null).status).toBe("unavailable");
     expect(writeSave(createFreshSave(), null)).toBe(false);
