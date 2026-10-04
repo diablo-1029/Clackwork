@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { audio } from "@/audio/audioManager";
+import { Meter } from "@/components/ui/Chunky";
 import { Icon } from "@/components/ui/Icon";
 import { useAnimatedNumber } from "@/components/ui/useAnimatedNumber";
 import { getStreakBonus } from "@/game/economy/multipliers";
@@ -17,36 +18,26 @@ function LevelMeter() {
   const level = usePlayerStore((s) => s.factoryLevel);
   const xp = usePlayerStore((s) => s.xp);
   const needed = xpRequired(level);
-  const progress = Math.min(1, xp / needed);
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-64" title={`${xp} / ${needed} XP`}>
+    <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-80" title={`${xp} / ${needed} XP`}>
       <motion.span
         key={level}
         initial={{ scale: 1.25 }}
         animate={{ scale: 1 }}
-        className="flex h-9 shrink-0 items-center gap-1 rounded-xl bg-brand-deep px-2.5 text-sm font-black text-white"
+        className="sf-tile sf-tone-deep flex h-10 shrink-0 items-center gap-1 rounded-xl px-2.5 text-sm font-black"
       >
-        <Icon name="xp" size={15} fill="currentColor" strokeWidth={0} className="text-gold" />
+        <Icon name="xp" size={17} fill="currentColor" strokeWidth={0} className="text-gold" />
         <span>
           <span className="sr-only">Factory Level </span>
           <span aria-hidden>Lv </span>
           {level}
         </span>
       </motion.span>
-      <div
-        className="h-3 min-w-10 flex-1 overflow-hidden rounded-full bg-surface-2"
-        role="progressbar"
-        aria-label="XP to next Factory Level"
-        aria-valuemin={0}
-        aria-valuemax={needed}
-        aria-valuenow={xp}
-      >
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-brand to-cyan transition-[width] duration-300 ease-out"
-          style={{ width: `${progress * 100}%` }}
-        />
-      </div>
+      <Meter value={xp} max={needed} label="XP to next Factory Level" className="h-5 min-w-10 flex-1" />
+      <span className="shrink-0 text-xs font-black text-muted tabular-nums max-sm:hidden" aria-hidden>
+        {xp} / {needed} XP
+      </span>
     </div>
   );
 }
@@ -64,10 +55,10 @@ function StreakChip() {
       key={streak}
       initial={{ scale: 1.2 }}
       animate={{ scale: 1 }}
-      className="flex h-9 shrink-0 items-center gap-1 rounded-xl bg-orange/15 px-2 text-sm font-black text-orange"
+      className="sf-chip sf-tone-orange flex h-10 shrink-0 items-center gap-1 rounded-xl px-2.5 text-sm font-black text-orange"
       aria-label={`Perfect streak ${streak}${showBonus ? `, plus ${Math.round(bonus * 100)} percent coins` : ""}`}
     >
-      <Icon name="streak" size={16} fill="currentColor" strokeWidth={0} />
+      <Icon name="streak" size={18} fill="currentColor" strokeWidth={0} />
       <span aria-hidden>x{streak}</span>
       {showBonus && (
         <span aria-hidden className="hidden text-xs font-extrabold sm:inline">
@@ -89,10 +80,10 @@ function CoinCounter() {
       initial={{ scale: 1.14 }}
       animate={{ scale: 1 }}
       transition={{ type: "spring", stiffness: 500, damping: 18 }}
-      className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-surface-2 px-2.5 text-sm font-black tabular-nums"
+      className="sf-chip sf-tone-gold flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-base font-black tabular-nums"
       aria-label={`${coins} coins`}
     >
-      <Icon name="coin" size={18} />
+      <Icon name="coin" size={22} />
       <span aria-hidden>{shown.toLocaleString("en-US")}</span>
     </motion.div>
   );
@@ -105,7 +96,7 @@ function SoundToggle() {
   return (
     <button
       type="button"
-      className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted hover:bg-surface-2"
+      className="sf-raised flex size-10 shrink-0 items-center justify-center rounded-xl text-muted transition-transform hover:text-ink active:translate-y-0.5"
       aria-label={enabled ? "Turn sound off" : "Turn sound on"}
       aria-pressed={enabled}
       onClick={() => {
@@ -123,8 +114,11 @@ function SoundToggle() {
 
 export function TopBar() {
   return (
-    <header className="flex items-center gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 sm:gap-3 sm:px-4 lg:px-6">
-      <h1 className="hidden shrink-0 text-lg font-black tracking-tight text-brand-deep md:block">
+    <header className="flex items-center gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2.5 sm:gap-3 sm:px-4 lg:px-6">
+      <h1 className="sf-title hidden shrink-0 items-center gap-2 text-xl text-brand-deep md:flex">
+        <span className="sf-tile sf-tone-orange flex size-8 items-center justify-center rounded-lg" aria-hidden>
+          <Icon name="settings" size={19} strokeWidth={2.4} />
+        </span>
         Clackwork
       </h1>
       <LevelMeter />

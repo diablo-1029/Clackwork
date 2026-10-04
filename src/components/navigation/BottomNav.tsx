@@ -29,34 +29,37 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="flex justify-center gap-1 px-2 pt-1.5 lg:px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="flex shrink-0 justify-center px-2 pt-2.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:block lg:py-0 lg:pr-0 lg:pb-5 lg:pl-6"
     >
-      {items.map((item) => {
-        const current = item.screen === screen;
-        return (
-          <button
-            key={item.screen}
-            type="button"
-            aria-current={current ? "page" : undefined}
-            onClick={() => {
-              if (current) return;
-              audio.play(item.screen === "factory" ? "uiBack" : "uiClick");
-              setScreen(item.screen);
-            }}
-            className={`relative flex min-h-12 min-w-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1.5 text-[11px] font-extrabold transition-colors sm:max-w-28 sm:text-xs ${
-              current ? "bg-brand-deep text-white" : "text-muted hover:bg-surface-2"
-            }`}
-          >
-            <Icon name={item.icon} size={21} />
-            {item.label}
-            {item.screen === "upgrades" && canUpgrade && !current && (
-              <span className="absolute top-1.5 right-[calc(50%-18px)] size-2.5 rounded-full bg-orange ring-2 ring-bg">
-                <span className="sr-only">Upgrade available</span>
-              </span>
-            )}
-          </button>
-        );
-      })}
+      {/* One dock along the bottom; a rail down the left side on wide screens. */}
+      <div className="sf-raised flex w-full max-w-xl gap-1 rounded-3xl p-1.5 lg:w-24 lg:flex-col lg:gap-1.5">
+        {items.map((item) => {
+          const current = item.screen === screen;
+          return (
+            <button
+              key={item.screen}
+              type="button"
+              aria-current={current ? "page" : undefined}
+              onClick={() => {
+                if (current) return;
+                audio.play(item.screen === "factory" ? "uiBack" : "uiClick");
+                setScreen(item.screen);
+              }}
+              className={`relative flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1.5 text-[11px] font-extrabold transition-[transform,background-color] sm:text-xs lg:min-h-[4.25rem] lg:flex-none ${
+                current ? "sf-tile sf-tone-deep -translate-y-0.5" : "text-muted hover:bg-surface-2 hover:text-ink"
+              }`}
+            >
+              <Icon name={item.icon} size={23} />
+              {item.label}
+              {item.screen === "upgrades" && canUpgrade && !current && (
+                <span className="absolute top-1.5 right-[calc(50%-18px)] size-2.5 rounded-full bg-orange ring-2 ring-surface">
+                  <span className="sr-only">Upgrade available</span>
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 }

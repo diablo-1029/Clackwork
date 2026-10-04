@@ -22,6 +22,10 @@
   --sf-success: #2fb97c;
   --sf-on-brand: #ffffff;
 
+  /* Chunky look: the underside of a raised panel, and the dots on the page background. */
+  --sf-edge: #b7c8e2;
+  --sf-dot: rgba(15, 85, 168, 0.09);
+
   color-scheme: light;
 }
 
@@ -34,6 +38,8 @@
     --sf-muted: #9bb0d0;
     --sf-border: #2a3f63;
     --sf-blue-700: #3d8fe6;
+    --sf-edge: #050b17;
+    --sf-dot: rgba(130, 175, 255, 0.07);
     color-scheme: dark;
   }
 }
@@ -46,6 +52,8 @@
   --sf-muted: #9bb0d0;
   --sf-border: #2a3f63;
   --sf-blue-700: #3d8fe6;
+  --sf-edge: #050b17;
+  --sf-dot: rgba(130, 175, 255, 0.07);
   color-scheme: dark;
 }
 
@@ -75,7 +83,9 @@ body {
 }
 
 body {
-  background: var(--sf-bg);
+  background:
+    radial-gradient(var(--sf-dot) 1.5px, transparent 1.6px) 0 0 / 18px 18px,
+    var(--sf-bg);
   color: var(--sf-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -271,6 +281,87 @@ button:disabled {
 [data-reduced-motion="true"] .sf-stage-perfect::after,
 [data-reduced-motion="true"] .sf-guide line[stroke-dasharray] {
   animation: none;
+}
+
+/* ---------- Chunky UI pieces ---------- */
+
+/* A panel that stands off the page: thick outline and a solid underside. */
+.sf-raised {
+  background: var(--sf-surface);
+  border: 2px solid var(--sf-border);
+  box-shadow: 0 4px 0 var(--sf-edge);
+}
+
+/* A pressed-in well for values and meters. */
+.sf-inset {
+  background: var(--sf-surface-2);
+  box-shadow: inset 0 2px 0 rgba(8, 30, 70, 0.1);
+}
+
+.sf-title {
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 0 color-mix(in srgb, currentColor 22%, transparent);
+}
+
+/* Tones colour chips, tiles and ribbons. */
+.sf-tone-neutral {
+  --tone: var(--sf-muted);
+  --tone-ink: #ffffff;
+}
+.sf-tone-blue {
+  --tone: var(--sf-blue-500);
+  --tone-ink: #ffffff;
+}
+.sf-tone-deep {
+  --tone: #0f55a8;
+  --tone-ink: #ffffff;
+}
+.sf-tone-orange {
+  --tone: var(--sf-orange-500);
+  --tone-ink: var(--sf-blue-900);
+}
+.sf-tone-gold {
+  --tone: var(--sf-gold-400);
+  --tone-ink: var(--sf-blue-900);
+}
+.sf-tone-green {
+  --tone: var(--sf-success);
+  --tone-ink: #ffffff;
+}
+
+/* Tinted chip: a soft wash of the tone. */
+.sf-chip {
+  background: color-mix(in srgb, var(--tone) 18%, var(--sf-surface));
+  border: 2px solid color-mix(in srgb, var(--tone) 42%, var(--sf-surface));
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--tone) 30%, var(--sf-edge));
+}
+
+/* Solid tile: the tone at full strength, for icons and ribbons. */
+.sf-tile {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 82%, #ffffff), var(--tone) 55%);
+  color: var(--tone-ink);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    0 3px 0 color-mix(in srgb, var(--tone) 62%, #000000);
+}
+
+.sf-meter {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 2px solid var(--sf-border);
+  background: var(--sf-surface-2);
+  box-shadow: inset 0 2px 0 rgba(8, 30, 70, 0.12);
+}
+
+.sf-meter-fill {
+  height: 100%;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0 42%, transparent 42%),
+    linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 55%, var(--sf-cyan)));
+  transition: width 0.3s ease-out;
 }
 
 /* ---------- Form controls ---------- */

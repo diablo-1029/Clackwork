@@ -75,36 +75,35 @@ export function GameShell() {
 
   return (
     <MotionConfig reducedMotion={reducedMotion ? "always" : "never"}>
-      <div
-        className="flex h-dvh w-full flex-col overflow-hidden"
-        data-reduced-motion={reducedMotion}
-      >
+      <div className="flex h-dvh w-full flex-col overflow-hidden" data-reduced-motion={reducedMotion}>
         <TopBar />
 
-        <main className="min-h-0 flex-1 px-2 sm:px-4 lg:px-6">
-          {!hydrated ? (
-            <div className="h-full rounded-3xl bg-surface-2" aria-busy="true" aria-label="Loading your factory" />
-          ) : (
-            <ErrorBoundary
-              fallback={(retry) => (
-                <div className="flex h-full flex-col items-center justify-center gap-3 rounded-3xl bg-surface p-6 text-center">
-                  <p className="font-bold">Something on the factory floor stopped. Your progress is saved.</p>
-                  <Button variant="secondary" onClick={retry}>
-                    Restart the line
-                  </Button>
-                </div>
-              )}
-            >
-              {screen === "factory" && <FactoryScreen />}
-              {screen === "products" && <ProductsScreen />}
-              {screen === "upgrades" && <UpgradesScreen />}
-              {screen === "themes" && <ThemesScreen />}
-              {screen === "settings" && <SettingsScreen />}
-            </ErrorBoundary>
-          )}
-        </main>
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row-reverse">
+          <main className="min-h-0 min-w-0 flex-1 px-2 sm:px-4 lg:pr-6 lg:pb-5 lg:pl-4">
+            {!hydrated ? (
+              <div className="h-full rounded-3xl bg-surface-2" aria-busy="true" aria-label="Loading your factory" />
+            ) : (
+              <ErrorBoundary
+                fallback={(retry) => (
+                  <div className="flex h-full flex-col items-center justify-center gap-3 rounded-3xl bg-surface p-6 text-center">
+                    <p className="font-bold">Something on the factory floor stopped. Your progress is saved.</p>
+                    <Button variant="secondary" onClick={retry}>
+                      Restart the line
+                    </Button>
+                  </div>
+                )}
+              >
+                {screen === "factory" && <FactoryScreen />}
+                {screen === "products" && <ProductsScreen />}
+                {screen === "upgrades" && <UpgradesScreen />}
+                {screen === "themes" && <ThemesScreen />}
+                {screen === "settings" && <SettingsScreen />}
+              </ErrorBoundary>
+            )}
+          </main>
 
-        <BottomNav />
+          <BottomNav />
+        </div>
         <Toast />
       </div>
     </MotionConfig>
