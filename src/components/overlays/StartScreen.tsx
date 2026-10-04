@@ -1,11 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { audio } from "@/audio/audioManager";
 import { Button } from "@/components/ui/Button";
-import { Chip, Panel } from "@/components/ui/Chunky";
-import { Icon } from "@/components/ui/Icon";
+import { Chip, Panel, Ribbon, Tile, type Tone } from "@/components/ui/Chunky";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import { productList } from "@/config/products";
 import { finishedLook } from "@/game/products/productLook";
 import { startShift } from "@/game/core/runActions";
@@ -29,6 +29,12 @@ function Stat({ icon, value, label }: { icon: ReactNode; value: string; label: s
   );
 }
 
+const shiftRules: { icon: IconName; tone: Tone; title: string; text: string }[] = [
+  { icon: "goal", tone: "blue", title: "Beat the clock", text: "Make as many products as you can before time runs out." },
+  { icon: "sparkle", tone: "gold", title: "Perfects win time", text: "Good results add seconds. Poor ones take them away." },
+  { icon: "streak", tone: "orange", title: "Build a combo", text: "Perfects in a row multiply your score, up to x3." },
+];
+
 /** One tap to play. The same tap unlocks audio, which browsers require. */
 export function StartScreen() {
   const level = usePlayerStore((s) => s.factoryLevel);
@@ -47,14 +53,49 @@ export function StartScreen() {
   const showGoals = isFeatureUnlocked("goals", level) && goals.length > 0;
   const lineup = productList.filter(isProductPlayable);
 
+  const seenShiftIntro = useProgressionStore((s) => s.onboarding.hasSeenShiftIntro);
+  const [explaining, setExplaining] = useState(false);
+
   const start = (mode: PlayMode) => {
     audio.unlock();
     audio.play("uiClick");
     setOnboarding("hasStarted");
-    if (mode === "shift") startShift();
-    else setMode("free");
+    if (mode === "shift") {
+      setOnboarding("hasSeenShiftIntro");
+      startShift();
+    } else setMode("free");
     startSession();
   };
+
+  // The first Start Shift explains the three rules before the clock is involved.
+  if (explaining) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center-safe overflow-y-auto p-4">
+        <Panel className="flex w-full max-w-sm flex-col items-center gap-3 p-5 text-ink" role="dialog" aria-labelledby="shift-intro">
+          <Ribbon tone="deep" id="shift-intro" className="text-sm">
+            How a shift works
+          </Ribbon>
+          <ul className="flex w-full flex-col gap-2">
+            {shiftRules.map((rule) => (
+              <li key={rule.title} className="sf-inset flex items-center gap-3 rounded-2xl p-2.5 text-left">
+                <Tile tone={rule.tone} className="size-11">
+                  <Icon name={rule.icon} />
+                </Tile>
+                <span className="min-w-0">
+                  <span className="block leading-tight font-black">{rule.title}</span>
+                  <span className="block text-xs font-bold text-muted">{rule.text}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-center text-xs font-bold text-muted">Your first shift is a warm-up: the clock waits for one product.</p>
+          <Button silent onClick={() => start("shift")} className="w-full text-lg" autoFocus>
+            Start
+          </Button>
+        </Panel>
+      </div>
+    );
+  }
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center-safe gap-4 overflow-y-auto p-4 text-center">
@@ -146,14 +187,23 @@ export function StartScreen() {
               : "Your first shift is a warm-up. Take your time."}
         </p>
 
-        <Button silent onClick={() => start("shift")} className="w-full text-lg">
+        <Button
+          silent
+          onClick={() => {
+            if (seenShiftIntro) return start("shift");
+            audio.unlock();
+            audio.play("uiClick");
+            setExplaining(true);
+          }}
+          className="w-full text-lg"
+        >
           Start Shift
         </Button>
         <div className="-mt-1 flex gap-2">
-          <Button silent variant="ghost" onClick={() => start("free")} className="min-h-11 flex-1 px-2">
+          <Button silent variant="ghost" onClick={() => start("free")} className="min-h-11 flex-1 px-2 text-sm whitespace-nowrap">
             Free play
           </Button>
-          <Button variant="ghost" onClick={() => setScreen("leaderboard")} className="min-h-11 flex-1 px-2">
+          <Button variant="ghost" onClick={() => setScreen("leaderboard")} className="min-h-11 flex-1 px-2 text-sm whitespace-nowrap">
             <Icon name="xp" size={16} fill="currentColor" strokeWidth={0} className="text-gold" />
             Leaderboard
           </Button>

@@ -75,6 +75,7 @@ export function createFreshSave(now: Date = new Date()): SaveDataCurrent {
       },
       reducedMotion: prefersReducedMotion(),
       particleDensity: "medium",
+      vibration: true,
     },
     onboarding: {
       hasStarted: false,
@@ -83,6 +84,7 @@ export function createFreshSave(now: Date = new Date()): SaveDataCurrent {
       hasSeenStreakIntro: false,
       hasSeenUpgradeIntro: false,
       hasSeenGoldenIntro: false,
+      hasSeenShiftIntro: false,
     },
     goals: { date: "", items: [], bonusPaid: false },
     achievements: [],

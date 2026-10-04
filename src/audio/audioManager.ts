@@ -43,6 +43,8 @@ class AudioManager {
   private ambient: LoopHandle | null = null;
   private settings: AudioSettings | null = null;
   private hidden = false;
+  /** Multiplies every tone's pitch while one sound is being built; see `play`. */
+  private pitch = 1;
 
   /** Must be called from a user gesture; browsers block audio before one. */
   unlock(): void {
@@ -134,8 +136,8 @@ class AudioManager {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = o.type ?? "sine";
-    osc.frequency.setValueAtTime(o.freq, start);
-    if (o.slideTo) osc.frequency.exponentialRampToValueAtTime(o.slideTo, start + o.duration);
+    osc.frequency.setValueAtTime(o.freq * this.pitch, start);
+    if (o.slideTo) osc.frequency.exponentialRampToValueAtTime(o.slideTo * this.pitch, start + o.duration);
 
     gain.gain.setValueAtTime(0.0001, start);
     gain.gain.exponentialRampToValueAtTime(o.gain, start + attack);
@@ -180,9 +182,11 @@ class AudioManager {
     });
   }
 
-  play(key: SoundKey): void {
+  /** `pitch` shifts the whole sound: reward chimes climb with the player's combo. */
+  play(key: SoundKey, pitch = 1): void {
     if (!this.audible) return;
     const ch = soundChannels[key];
+    this.pitch = Math.min(2, Math.max(0.5, pitch));
     try {
       switch (key) {
         case "uiClick":
@@ -251,6 +255,32 @@ class AudioManager {
           break;
         case "rewardPerfect":
           this.chime(ch, [784, 988, 1319], 0.065, 0.3, 0.24);
+          // A low thump under the chime gives a Perfect some weight.
+          this.tone(ch, { freq: 96, slideTo: 52, duration: 0.16, gain: 0.32 });
+          this.noise(ch, { filter: "highpass", freq: 5200, duration: 0.18, gain: 0.05 });
+          break;
+        case "tick":
+          this.tone(ch, { freq: 1180, duration: 0.035, gain: 0.2, type: "square" });
+          this.tone(ch, { freq: 590, duration: 0.05, gain: 0.12, type: "triangle" });
+          break;
+        case "penalty":
+          // Time lost: short, low and dull, never harsh.
+          this.tone(ch, { freq: 196, slideTo: 131, duration: 0.16, gain: 0.3, type: "triangle" });
+          this.noise(ch, { filter: "lowpass", freq: 420, duration: 0.1, gain: 0.18 });
+          break;
+        case "shiftStart":
+          // A factory whistle: two rising notes.
+          this.tone(ch, { freq: 587, slideTo: 659, duration: 0.14, gain: 0.2, type: "triangle" });
+          this.tone(ch, { freq: 784, slideTo: 880, duration: 0.24, gain: 0.22, type: "triangle", delay: 0.13 });
+          break;
+        case "shiftEnd":
+          // The end-of-shift horn: a held fifth that sags as it fades.
+          this.tone(ch, { freq: 220, slideTo: 196, duration: 0.7, gain: 0.34, type: "sawtooth", attack: 0.03 });
+          this.tone(ch, { freq: 330, slideTo: 294, duration: 0.7, gain: 0.2, type: "sawtooth", attack: 0.03 });
+          this.noise(ch, { filter: "lowpass", freq: 700, duration: 0.5, gain: 0.08 });
+          break;
+        case "comboUp":
+          this.chime(ch, [988, 1319, 1976], 0.05, 0.22, 0.2);
           break;
         case "coin":
           this.tone(ch, { freq: 1250, slideTo: 1700, duration: 0.07, gain: 0.14, type: "triangle" });
@@ -269,6 +299,7 @@ class AudioManager {
     } catch {
       // A failed sound must never interrupt play.
     }
+    this.pitch = 1;
   }
 
   /**

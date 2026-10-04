@@ -57,7 +57,12 @@ export type SoundKey =
   | "coin"
   | "purchase"
   | "levelUp"
-  | "golden";
+  | "golden"
+  | "tick"
+  | "penalty"
+  | "shiftStart"
+  | "shiftEnd"
+  | "comboUp";
 
 export type LoopKey = "cutLoop" | "polishLoop" | "tapeLoop" | "sprayLoop";
 

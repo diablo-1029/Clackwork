@@ -208,6 +208,9 @@ export function SettingsScreen() {
         <Row label="Reduced motion" hint="Fewer particles, fades instead of slides.">
           <Toggle label="Reduced motion" checked={settings.reducedMotion} onChange={settings.setReducedMotion} />
         </Row>
+        <Row label="Vibration" hint="A short buzz on Perfects and at the end of a shift, on phones that support it.">
+          <Toggle label="Vibration" checked={settings.vibration} onChange={settings.setVibration} />
+        </Row>
         <Row label="Particles">
           <Segmented<ParticleDensity>
             label="Particle density"
@@ -229,6 +232,12 @@ export function SettingsScreen() {
         </Row>
         <Row label="Perfect results">
           <span className="font-black tabular-nums">{totalPerfects.toLocaleString("en-US")}</span>
+        </Row>
+        <Row
+          label="Where your progress lives"
+          hint="Only in this browser, on this device. Clearing site data or browsing privately erases it."
+        >
+          <span className="sr-only">Saved in this browser</span>
         </Row>
         <Row label="Reset progress" hint="Erases coins, levels, upgrades and settings on this device.">
           {confirmingReset ? (

@@ -18,4 +18,6 @@ export interface GameSettings {
   audio: AudioSettings;
   reducedMotion: boolean;
   particleDensity: ParticleDensity;
+  /** Short vibrations on phones that support them. */
+  vibration: boolean;
 }

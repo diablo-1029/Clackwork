@@ -29,6 +29,11 @@ export const soundChannels: Record<SoundKey, AudioChannel> = {
   purchase: "reward",
   levelUp: "reward",
   golden: "reward",
+  tick: "ui",
+  penalty: "reward",
+  shiftStart: "reward",
+  shiftEnd: "reward",
+  comboUp: "reward",
 };
 
 export const loopChannels: Record<LoopKey, AudioChannel> = {

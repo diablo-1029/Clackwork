@@ -9,7 +9,11 @@ import { STAGE, type MachineProps } from "@/game/machines/shared";
 import { useUiStore } from "@/stores/uiStore";
 import type { MachineId } from "@/types/game";
 
-type StageProps = Omit<MachineProps, "burst"> & { machineId: MachineId };
+type StageProps = Omit<MachineProps, "burst"> & {
+  machineId: MachineId;
+  /** Changes each time a Perfect lands on this machine; each change throws a shower of sparks. */
+  celebrate?: number;
+};
 
 /** Stands in for a machine that has no module (or whose module crashed). */
 function FallbackMachine({ label, onRun }: { label: string; onRun: () => void }) {
@@ -24,8 +28,15 @@ function FallbackMachine({ label, onRun }: { label: string; onRun: () => void })
 }
 
 /** The 4:3 box a machine lives in, with its particle layer and crash containment. */
-export function MachineStage({ machineId, ...props }: StageProps) {
+export function MachineStage({ machineId, celebrate = 0, ...props }: StageProps) {
   const { burst, layer } = useParticles();
+
+  useEffect(() => {
+    if (celebrate === 0) return;
+    const colors = ["var(--sf-gold-400)", "#ffffff", "var(--fx-accent)", "var(--fx-accent-2)"];
+    burst({ x: STAGE.w / 2, y: STAGE.h * 0.5 }, { count: 20, spread: 170, shape: "spark", colors });
+    burst({ x: STAGE.w / 2, y: STAGE.h * 0.5 }, { count: 10, spread: 110, shape: "chip", colors });
+  }, [celebrate, burst]);
   const Machine = machineComponents[machineId];
   const stressBursts = useUiStore((s) => s.debug.stressBursts);
 

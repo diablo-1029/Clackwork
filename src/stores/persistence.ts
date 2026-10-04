@@ -48,6 +48,7 @@ export function buildSave(): SaveDataCurrent {
       audio: settings.audio,
       reducedMotion: settings.reducedMotion,
       particleDensity: settings.particleDensity,
+      vibration: settings.vibration,
     },
     onboarding: progression.onboarding,
     goals: goals.goals,

@@ -100,7 +100,7 @@ export function ShiftSummary({
           <Stat
             icon={<Icon name="streak" size={16} fill="currentColor" strokeWidth={0} className="text-orange" />}
             value={`x${comboMultiplier(summary.bestCombo).toFixed(1)}`}
-            label="Best combo"
+            label="Combo"
           />
           <Stat icon={<Icon name="coin" size={18} />} value={`+${summary.coins}`} label="Coins" />
           <Stat
@@ -120,10 +120,10 @@ export function ShiftSummary({
               Play again
             </Button>
             <div className="flex w-full gap-2">
-              <Button variant="ghost" onClick={onFreePlay} className="min-h-11 flex-1 px-2">
+              <Button variant="ghost" onClick={onFreePlay} className="min-h-11 flex-1 px-2 text-sm whitespace-nowrap">
                 Free play
               </Button>
-              <Button variant="ghost" onClick={onLeaderboard} className="min-h-11 flex-1 px-2">
+              <Button variant="ghost" onClick={onLeaderboard} className="min-h-11 flex-1 px-2 text-sm whitespace-nowrap">
                 Leaderboard
               </Button>
             </div>

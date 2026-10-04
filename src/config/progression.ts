@@ -55,7 +55,7 @@ export const shiftPacing = {
   machineResolveMs: 120,
   resultFeedbackMs: 380,
   machineExitMs: 160,
-  rewardSummaryMs: 320,
+  rewardSummaryMs: 450,
 } as const;
 
 export const pacing = {

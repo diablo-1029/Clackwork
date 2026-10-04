@@ -58,6 +58,8 @@ export const SaveSchemaV1 = z.object({
     }),
     reducedMotion: z.boolean(),
     particleDensity: z.enum(["low", "medium", "high"]),
+    // Added with the feel pass: on unless the player turns it off.
+    vibration: z.boolean().default(true),
   }),
 
   onboarding: z.object({
@@ -67,6 +69,8 @@ export const SaveSchemaV1 = z.object({
     hasSeenStreakIntro: z.boolean(),
     hasSeenUpgradeIntro: z.boolean(),
     hasSeenGoldenIntro: z.boolean(),
+    // Added with shifts: a returning player sees the explainer once too.
+    hasSeenShiftIntro: z.boolean().default(false),
   }),
 
   // Added with daily goals: older saves start with none dealt and nothing earned.

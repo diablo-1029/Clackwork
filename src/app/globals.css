@@ -153,6 +153,56 @@ button:disabled {
   animation: none;
 }
 
+/* The machine jolts when a result lands: a little for any result, more for a Perfect. */
+.sf-shake {
+  animation: sf-shake 0.2s ease-out 1;
+}
+
+.sf-shake-strong {
+  animation: sf-shake-strong 0.26s ease-out 1;
+}
+
+@keyframes sf-shake {
+  0% {
+    translate: 0 0;
+  }
+  30% {
+    translate: 0 3px;
+  }
+  60% {
+    translate: 0 -1px;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+
+@keyframes sf-shake-strong {
+  0% {
+    translate: 0 0;
+    scale: 1;
+  }
+  22% {
+    translate: -3px 6px;
+    scale: 1.015;
+  }
+  48% {
+    translate: 3px -3px;
+  }
+  72% {
+    translate: -1px 2px;
+  }
+  100% {
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+[data-reduced-motion="true"] .sf-shake,
+[data-reduced-motion="true"] .sf-shake-strong {
+  animation: none;
+}
+
 /* A single ring pulse around the stage on a Perfect result. */
 .sf-stage-perfect::after {
   content: "";

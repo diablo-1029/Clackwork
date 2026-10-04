@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect } from "react";
 import { useUiStore } from "@/stores/uiStore";
 
-/** Non-blocking messages: never needs dismissing. Sits near the top of the stage, under the order's name plate and clear of the instruction line. */
+/** Non-blocking messages: never needs dismissing. Drops over the top bar, clear of the clock, the order's name plate and the instruction line. */
 export function Toast() {
   const toast = useUiStore((s) => s.toast);
   const clearToast = useUiStore((s) => s.clearToast);
@@ -16,7 +16,7 @@ export function Toast() {
   }, [toast, clearToast]);
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-[9.75rem] z-50 flex justify-center px-4" role="status" aria-live="polite">
+    <div className="pointer-events-none fixed inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-50 flex justify-center px-4" role="status" aria-live="polite">
       <AnimatePresence>
         {toast && (
           <motion.p

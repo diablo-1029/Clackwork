@@ -34,6 +34,7 @@ export interface SaveDataV1 {
     hasSeenStreakIntro: boolean;
     hasSeenUpgradeIntro: boolean;
     hasSeenGoldenIntro: boolean;
+    hasSeenShiftIntro: boolean;
   };
 
   /** Today's goals, earned achievement ids and lifetime stats. */

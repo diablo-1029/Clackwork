@@ -8,6 +8,7 @@ interface SettingsState extends GameSettings {
   setAudio: (patch: Partial<AudioSettings>) => void;
   setReducedMotion: (value: boolean) => void;
   setParticleDensity: (value: ParticleDensity) => void;
+  setVibration: (value: boolean) => void;
   hydrate: (data: GameSettings) => void;
 }
 
@@ -24,6 +25,7 @@ export const initialSettings: GameSettings = {
   },
   reducedMotion: false,
   particleDensity: "medium",
+  vibration: true,
 };
 
 export const useSettingsStore = create<SettingsState>()((set) => ({
@@ -33,5 +35,6 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   setAudio: (patch) => set((s) => ({ audio: { ...s.audio, ...patch } })),
   setReducedMotion: (reducedMotion) => set({ reducedMotion }),
   setParticleDensity: (particleDensity) => set({ particleDensity }),
+  setVibration: (vibration) => set({ vibration }),
   hydrate: (data) => set({ ...data }),
 }));

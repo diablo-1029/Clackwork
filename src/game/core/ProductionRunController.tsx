@@ -20,6 +20,9 @@ import { products } from "@/config/products";
 import { pacing, shiftPacing } from "@/config/progression";
 import { upgrades } from "@/config/upgrades";
 import { getQualityBand } from "@/game/economy/multipliers";
+import { finishedLook } from "@/game/products/productLook";
+import { ProductIcon } from "@/game/products/ProductRenderer";
+import { vibrate } from "@/lib/haptics";
 import type { MachineCompletion } from "@/game/machines/shared";
 import { machineVariants, pickShiftVariant, pickVariant } from "@/game/machines/variants";
 import { deriveProductLook } from "@/game/products/productLook";
@@ -95,6 +98,8 @@ export function ProductionRunController() {
   const overdrive = usePlayerStore((s) => isOverdrive(s.fever));
 
   const [celebrating, setCelebrating] = useState(false);
+  /** The jolt from the last result: a counter so each one replays, and whether it was a Perfect. */
+  const [impact, setImpact] = useState({ count: 0, strong: false });
   /** The run whose summary has been dismissed, leaving only the order board on screen. */
   const [boardOnlyFor, setBoardOnlyFor] = useState<string | null>(null);
   // Once unlocked, the player picks each order from the board instead of being handed one.
@@ -184,7 +189,10 @@ export function ProductionRunController() {
         case "MACHINE_READY":
         case "PLAYER_INTERACTION":
           if (!shiftExpired) return;
-          return after(Math.max(0, economy.shift.buzzerMs - (Date.now() - (expiredAt.current ?? Date.now()))), endShift);
+          return after(
+            Math.max(0, economy.shift.buzzerMs - (Date.now() - (expiredAt.current ?? Date.now()))),
+            endShift,
+          );
         case "MACHINE_RESOLVE":
           return after(shiftPacing.machineResolveMs, () => dispatch("SCORE_COMMITTED"));
         case "RESULT_FEEDBACK":
@@ -241,6 +249,25 @@ export function ProductionRunController() {
     dispatch,
     advance,
   ]);
+
+  // The whistle at the start of a shift, the horn and a buzz at the end.
+  const shiftActive = Boolean(shift);
+  useEffect(() => {
+    if (shiftActive) audio.play("shiftStart");
+  }, [shiftActive]);
+  useEffect(() => {
+    if (!shiftSummary) return;
+    audio.play("shiftEnd");
+    vibrate("shiftEnd");
+  }, [shiftSummary]);
+
+  // The last seconds of a shift tick.
+  const secondsLeft = shift && shift.started && !shift.expired ? Math.ceil(shift.timeLeftMs / 1000) : null;
+  useEffect(() => {
+    if (secondsLeft === null || secondsLeft > economy.shift.lowMs / 1000 || secondsLeft <= 0) return;
+    audio.play("tick");
+    vibrate("tick");
+  }, [secondsLeft]);
 
   // A Golden order announces itself.
   useEffect(() => {
@@ -346,8 +373,24 @@ export function ProductionRunController() {
     const committed = useRunStore.getState().feedback;
     if (!committed) return;
     const sound = tierSound[getQualityBand(committed.quality).tier];
+    const perfect = committed.quality >= 100;
+    const poor = committed.quality < economy.shift.poorQuality;
+    // The chime climbs with the combo (or the streak outside a shift), so a good run sounds like one.
+    const combo = useShiftStore.getState().shift?.combo ?? committed.streak;
+    const pitch = 1 + Math.min(12, Math.max(0, combo - 1)) * 0.035;
     // Slightly after the machine's own sound so the two do not mask each other.
-    if (sound) window.setTimeout(() => audio.play(sound), 130);
+    if (sound) window.setTimeout(() => audio.play(sound, pitch), 130);
+    if (poor && inShift) window.setTimeout(() => audio.play("penalty"), 130);
+
+    setImpact((previous) => ({ count: previous.count + 1, strong: perfect }));
+    if (perfect) vibrate("perfect");
+    else if (poor) vibrate("poor");
+
+    // Every tenth Perfect in a row is another whole step on the score multiplier.
+    if (inShift && perfect && combo > 0 && combo % 10 === 0) {
+      window.setTimeout(() => audio.play("comboUp"), 260);
+      showToast(`Combo x${(1 + combo * economy.shift.comboStep).toFixed(0)}!`);
+    }
 
     if (committed.overdriveStarted) {
       window.setTimeout(() => audio.play("golden"), 320);
@@ -399,8 +442,7 @@ export function ProductionRunController() {
             {phase !== "ORDER_INTRO" && <OrderValueChip value={orderValue} />}
             {overdrive && (
               <Ribbon tone="orange" className="sf-overdrive-tag px-2 tracking-normal" title="Overdrive: double coins">
-                <Icon name="streak" size={12} fill="currentColor" strokeWidth={0} />
-                x{economy.fever.coinMultiplier}
+                <Icon name="streak" size={12} fill="currentColor" strokeWidth={0} />x{economy.fever.coinMultiplier}
               </Ribbon>
             )}
             {run.twist && (
@@ -424,28 +466,35 @@ export function ProductionRunController() {
               }
             >
               <div className="sf-ground" aria-hidden />
-              <MachineStage
-                machineId={machineId}
-                runId={run.id}
-                product={product}
-                material={product.materialProfile}
-                isGolden={run.isGolden}
-                richness={materialsLevel / upgrades.betterMaterials.maxLevel}
-                look={look}
-                factoryLevel={factoryLevel}
-                variant={variant.id}
-                tempo={inShift ? difficulty.tempo : 1}
-                step={run.machineSequence.slice(0, run.currentMachineIndex).filter((id) => id === machineId).length}
-                active={interactive}
-                showHint={showHint}
-                onInteractionStart={() => {
-                  // The shift clock starts on the player's first move.
-                  useShiftStore.getState().update(startClock);
-                  dispatch("INTERACTION_START");
-                }}
-                onInteractionCancel={() => dispatch("INTERACTION_CANCEL")}
-                onComplete={handleComplete}
-              />
+              {/* Re-keyed on every result so the jolt replays. */}
+              <div
+                key={impact.count}
+                className={`h-full w-full ${impact.count === 0 ? "" : impact.strong ? "sf-shake-strong" : "sf-shake"}`}
+              >
+                <MachineStage
+                  celebrate={perfectPulse ? run.results.length : 0}
+                  machineId={machineId}
+                  runId={run.id}
+                  product={product}
+                  material={product.materialProfile}
+                  isGolden={run.isGolden}
+                  richness={materialsLevel / upgrades.betterMaterials.maxLevel}
+                  look={look}
+                  factoryLevel={factoryLevel}
+                  variant={variant.id}
+                  tempo={inShift ? difficulty.tempo : 1}
+                  step={run.machineSequence.slice(0, run.currentMachineIndex).filter((id) => id === machineId).length}
+                  active={interactive}
+                  showHint={showHint}
+                  onInteractionStart={() => {
+                    // The shift clock starts on the player's first move.
+                    useShiftStore.getState().update(startClock);
+                    dispatch("INTERACTION_START");
+                  }}
+                  onInteractionCancel={() => dispatch("INTERACTION_CANCEL")}
+                  onComplete={handleComplete}
+                />
+              </div>
             </motion.div>
           )}
         </div>
@@ -489,6 +538,22 @@ export function ProductionRunController() {
               role="status"
             >
               <Icon name="coin" size={24} />+{lastReward.coins}
+            </motion.div>
+            {/* The finished product rides the belt out. */}
+            <motion.div
+              key={`out-${lastReward.runId}`}
+              className="absolute bottom-[4.6rem] left-1/2"
+              initial={{ x: "-50%", opacity: 1 }}
+              animate={{ x: "55vw", opacity: [1, 1, 0] }}
+              transition={{ duration: 0.45, ease: "easeIn" }}
+              aria-hidden
+            >
+              <ProductIcon
+                material={product.materialProfile}
+                isGolden={run.isGolden}
+                look={finishedLook(product, run.isGolden)}
+                size={64}
+              />
             </motion.div>
           </div>
         )}

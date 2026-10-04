@@ -16,13 +16,29 @@ export function ShiftHud({ shift }: { shift: ShiftState }) {
   return (
     <div className="flex items-center gap-2 px-1" role="group" aria-label="Shift">
       <div
-        className={`sf-raised flex h-10 w-[4.75rem] shrink-0 items-center justify-center gap-1 rounded-xl text-lg font-black tabular-nums ${
+        className={`sf-raised relative flex h-10 w-[4.75rem] shrink-0 items-center justify-center gap-1 rounded-xl text-lg font-black tabular-nums ${
           low ? "sf-clock-low !border-orange text-orange" : ""
         }`}
         role="timer"
         aria-label={`${Math.ceil(seconds)} seconds left`}
       >
         <span aria-hidden>{shift.expired ? "0.0" : seconds.toFixed(1)}</span>
+        {/* What the last result did to the clock, drifting up off it. */}
+        {shift.lastDeltaMs !== 0 && (
+          <motion.span
+            key={shift.machines}
+            initial={{ opacity: 0, y: 6, scale: 0.8 }}
+            animate={{ opacity: [0, 1, 1, 0], y: [6, -12, -18, -26], scale: 1 }}
+            transition={{ duration: 0.9, ease: "easeOut" }}
+            className={`pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 text-xs font-black whitespace-nowrap ${
+              shift.lastDeltaMs > 0 ? "text-success" : "text-orange"
+            }`}
+            aria-hidden
+          >
+            {shift.lastDeltaMs > 0 ? "+" : "−"}
+            {(Math.abs(shift.lastDeltaMs) / 1000).toFixed(1)}s
+          </motion.span>
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <Meter
@@ -35,8 +51,8 @@ export function ShiftHud({ shift }: { shift: ShiftState }) {
         <p className="mt-0.5 truncate text-[10px] font-black tracking-wider text-muted uppercase">
           {waiting
             ? shift.warmup
-              ? "Warm-up: the clock starts after your first product"
-              : "The clock starts on your first move"
+              ? "Warm-up: no clock yet"
+              : "Starts on your first move"
             : shift.expired
               ? "Time! Finish this one"
               : `${shift.products} made`}

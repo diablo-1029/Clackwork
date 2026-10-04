@@ -41,6 +41,7 @@ export const initialOnboarding: Onboarding = {
   hasSeenStreakIntro: false,
   hasSeenUpgradeIntro: false,
   hasSeenGoldenIntro: false,
+  hasSeenShiftIntro: false,
 };
 
 const addUnique = <T,>(list: T[], item: T) => (list.includes(item) ? list : [...list, item]);
