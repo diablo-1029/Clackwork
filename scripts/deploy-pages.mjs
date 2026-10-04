@@ -12,6 +12,12 @@ const remote = read("git remote get-url origin");
 const commit = read("git rev-parse --short HEAD");
 const basePath = `/${basename(remote).replace(/\.git$/, "")}`;
 
+// Nothing is published unless the code is sound.
+console.log("Checking types, lint and tests ...");
+run("npx tsc --noEmit");
+run("npx eslint .");
+run("npx vitest run");
+
 console.log(`Building ${commit} for ${basePath} ...`);
 run("npm run build", { env: { ...process.env, PAGES_BASE_PATH: basePath } });
 

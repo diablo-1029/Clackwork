@@ -1,17 +1,24 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/nunito";
+import { appPath } from "@/lib/appPath";
 import "./globals.css";
 
 const title = "Clackwork — An Oddly Satisfying Factory Game";
 const description =
-  "Cut, stamp, polish, assemble, sort, and package products in a relaxing browser factory where every interaction is designed to feel satisfying.";
+  "Beat the clock in a tiny factory. Cut, stamp, polish, sort and pack as many products as you can before the shift ends, then beat your best.";
+/** Where the game is published; share previews need full addresses. */
+const SITE = "https://diablo-1029.github.io";
+const shareImage = { url: appPath("/og.png"), width: 1200, height: 630, alt: "Clackwork" };
 
 export const metadata: Metadata = {
   title,
   description,
   applicationName: "Clackwork",
-  openGraph: { title, description, type: "website", siteName: "Clackwork" },
-  twitter: { card: "summary", title, description },
+  metadataBase: new URL(SITE),
+  icons: { apple: appPath("/icons/apple-touch-icon.png") },
+  appleWebApp: { capable: true, title: "Clackwork", statusBarStyle: "black-translucent" },
+  openGraph: { title, description, type: "website", siteName: "Clackwork", url: appPath("/"), images: [shareImage] },
+  twitter: { card: "summary_large_image", title, description, images: [shareImage.url] },
 };
 
 export const viewport: Viewport = {

@@ -1,6 +1,6 @@
 {
   "name": "clackwork",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "icons": "node scripts/make-icons.mjs",
     "simulate": "vitest run --config vitest.sim.config.ts --reporter=verbose"
   },
   "dependencies": {

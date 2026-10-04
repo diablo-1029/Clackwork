@@ -17,6 +17,8 @@ factory themes.
 - Works with mouse, pen and touch
 - Light and dark modes, five factory themes, reduced-motion and sound settings
 - Playable at https://diablo-1029.github.io/Clackwork/ (published with `npm run deploy`)
+- Installable on phones (Add to Home Screen) and playable offline, apart from the shared leaderboard
+- Sound, vibration and a jolt on every result; reduced motion turns the movement and vibration off
 - Frontend only: a static site with progress saved in the browser (`localStorage`)
 
 ## Run it
@@ -32,7 +34,9 @@ Then open http://localhost:3000.
 | --- | --- |
 | `npm run dev` | Development server |
 | `npm run build` | Static production build into `out/` (deploy to any static host) |
-| `npm run deploy` | Builds for GitHub Pages and publishes to the `gh-pages` branch |
+| `npm run deploy` | Runs typecheck, lint and tests, then builds for GitHub Pages and publishes to the `gh-pages` branch |
+| `npm run simulate` | Plays thousands of simulated shifts and prints a balance report |
+| `npm run icons` | Regenerates the app icons and share image from `src/app/icon.svg` |
 | `npm test` | Unit and integration tests (Vitest) |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript, no emit |

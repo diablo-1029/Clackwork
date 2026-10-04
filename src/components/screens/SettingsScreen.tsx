@@ -6,6 +6,7 @@ import { DebugPanel } from "@/components/overlays/DebugPanel";
 import { Button } from "@/components/ui/Button";
 import { Panel, Ribbon } from "@/components/ui/Chunky";
 import { Icon, type IconName } from "@/components/ui/Icon";
+import { APP_VERSION } from "@/lib/appPath";
 import { SECRET_TAP_WINDOW_MS, SECRET_TAPS } from "@/lib/debugAccess";
 import { resetGame } from "@/stores/persistence";
 import { usePlayerStore } from "@/stores/playerStore";
@@ -265,6 +266,8 @@ export function SettingsScreen() {
       </Panel>
 
       {debugTools && <DebugPanel />}
+
+      <p className="mt-4 text-center text-xs font-bold text-muted">Clackwork {APP_VERSION}</p>
     </ScreenFrame>
   );
 }

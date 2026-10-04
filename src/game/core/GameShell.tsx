@@ -16,6 +16,7 @@ import { ThemesScreen } from "@/components/screens/ThemesScreen";
 import { UpgradesScreen } from "@/components/screens/UpgradesScreen";
 import { Button } from "@/components/ui/Button";
 import { themes } from "@/config/themes";
+import { appPath } from "@/lib/appPath";
 import { readDebugAccess, typeSecret } from "@/lib/debugAccess";
 import { initPersistence } from "@/stores/persistence";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -59,6 +60,22 @@ export function GameShell() {
     }
     // Today's goals are dealt as soon as the save is in, so the start screen can show them.
     refreshGoals();
+  }, []);
+
+  // Offline play for the installed game. Production only, so development never serves stale files.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker
+      .register(appPath("/sw.js"), { scope: appPath("/") })
+      .then(() => navigator.serviceWorker.ready)
+      .then((registration) => {
+        // Hand over everything this page has already loaded, so one visit is enough.
+        const urls = [location.href, ...performance.getEntriesByType("resource").map((entry) => entry.name)];
+        registration.active?.postMessage({ type: "cache", urls });
+      })
+      .catch(() => {
+        // No service worker: the game still works, just not offline.
+      });
   }, []);
 
   // The hidden debug tools: remembered per device, toggled by typing the secret word.
