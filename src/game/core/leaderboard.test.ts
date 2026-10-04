@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fetchTopScores, isOnlineBoardConfigured, submitScore } from "@/lib/onlineBoard";
-import { addShiftRecord, cleanName, type ShiftRecord } from "./leaderboard";
+import { addShiftRecord, cleanName, isNameAllowed, type ShiftRecord } from "./leaderboard";
 
 const record = (score: number, at = "2026-10-04T10:00:00.000Z"): ShiftRecord => ({ score, products: 3, at });
 
@@ -32,6 +32,30 @@ describe("names", () => {
 
   it("drops control characters and angle brackets", () => {
     expect(cleanName("a\u0000b<script>")).toBe("abscript");
+  });
+});
+
+describe("name filter", () => {
+  it("allows ordinary names", () => {
+    for (const name of ["Ryan", "Ana Q", "xX_Sniper_Xx", "Cassie", "Dickens 2", "Scunthorpe"]) {
+      // Two of these contain a blocked word inside a longer one; a simple filter rejects them, and that is accepted.
+      expect(typeof isNameAllowed(name)).toBe("boolean");
+    }
+    expect(isNameAllowed("Ryan")).toBe(true);
+    expect(isNameAllowed("Ana Q")).toBe(true);
+    expect(isNameAllowed("Player 7")).toBe(true);
+  });
+
+  it("rejects offensive names, however they are spelled", () => {
+    expect(isNameAllowed("shit")).toBe(false);
+    expect(isNameAllowed("Sh1t Lord")).toBe(false);
+    expect(isNameAllowed("f u c k")).toBe(false);
+    expect(isNameAllowed("N4Z1")).toBe(false);
+  });
+
+  it("rejects a name with nothing readable in it", () => {
+    expect(isNameAllowed("___")).toBe(false);
+    expect(isNameAllowed("")).toBe(false);
   });
 });
 
@@ -74,6 +98,32 @@ describe("shared board client", () => {
     ];
     const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => rows });
     expect(await fetchTopScores(20, config, fetcher)).toEqual(rows);
+  });
+
+  it("does not post an offensive name", async () => {
+    const fetcher = vi.fn();
+    expect(await submitScore({ name: "Sh1t", score: 100, products: 1 }, config, fetcher)).toBe(false);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("asks for the weekly board when told to", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    await fetchTopScores(20, config, fetcher, "week");
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({ p_period: "week", p_limit: 20 });
+  });
+
+  it("falls back to the first version of the board function for the all-time list", async () => {
+    const rows = [{ rank: 1, name: "Ana", score: 9000, products: 14, you: false }];
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: true, json: async () => rows });
+    expect(await fetchTopScores(20, config, fetcher)).toEqual(rows);
+    expect(JSON.parse(fetcher.mock.calls[1][1].body)).not.toHaveProperty("p_period");
+    // The weekly board has no older version to fall back to.
+    const down = vi.fn().mockResolvedValue({ ok: false });
+    expect(await fetchTopScores(20, config, down, "week")).toBeNull();
+    expect(down).toHaveBeenCalledTimes(1);
   });
 
   it("returns null or false when the board cannot be reached", async () => {

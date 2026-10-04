@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { audio } from "@/audio/audioManager";
 import { Button } from "@/components/ui/Button";
 import { Chip, Panel, Ribbon } from "@/components/ui/Chunky";
-import { NAME_MAX_LENGTH } from "@/game/core/leaderboard";
+import { NAME_MAX_LENGTH, cleanName, isNameAllowed } from "@/game/core/leaderboard";
 import {
   fetchTopScores,
   getPlayerName,
   isOnlineBoardConfigured,
   setPlayerName,
   submitScore,
+  type BoardPeriod,
   type OnlineEntry,
 } from "@/lib/onlineBoard";
 import { useGoalsStore } from "@/stores/goalsStore";
@@ -50,6 +51,8 @@ export function LeaderboardScreen() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [name, setName] = useState("");
   const [savedName, setSavedName] = useState("");
+  const [period, setPeriod] = useState<BoardPeriod>("all");
+  const nameRejected = cleanName(name).length > 0 && !isNameAllowed(cleanName(name));
 
   // Load the saved name and the shared board once the screen is open.
   useEffect(() => {
@@ -61,7 +64,7 @@ export function LeaderboardScreen() {
       setSavedName(stored);
     }, 0);
     if (online) {
-      fetchTopScores().then((rows) => {
+      fetchTopScores(20, undefined, undefined, period).then((rows) => {
         if (cancelled) return;
         setEntries(rows);
         setStatus(rows ? "ready" : "error");
@@ -71,10 +74,11 @@ export function LeaderboardScreen() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [online]);
+  }, [online, period]);
 
   // Saving a name also posts the best score so far, then refreshes the list.
   const saveName = async () => {
+    if (nameRejected) return;
     const clean = setPlayerName(name);
     if (!clean) return;
     audio.play("uiClick");
@@ -83,7 +87,7 @@ export function LeaderboardScreen() {
     if (!online) return;
     setStatus("loading");
     if (best.score > 0) await submitScore({ name: clean, score: best.score, products: best.products });
-    const rows = await fetchTopScores();
+    const rows = await fetchTopScores(20, undefined, undefined, period);
     setEntries(rows);
     setStatus(rows ? "ready" : "error");
   };
@@ -109,18 +113,59 @@ export function LeaderboardScreen() {
               autoComplete="nickname"
               className="sf-inset min-h-12 min-w-0 flex-1 rounded-2xl border-2 border-line px-3 font-extrabold outline-none focus:border-brand"
             />
-            <Button type="submit" silent variant="secondary" disabled={!name.trim() || name.trim() === savedName}>
+            <Button
+              type="submit"
+              silent
+              variant="secondary"
+              disabled={!name.trim() || name.trim() === savedName || nameRejected}
+            >
               Save
             </Button>
           </form>
+          {nameRejected && (
+            <p className="mt-2 text-xs font-extrabold text-orange" role="alert">
+              That name can&apos;t be used. Please pick another.
+            </p>
+          )}
           <p className="mt-2 text-xs font-bold text-muted">
-            Your name and best score are visible to everyone who plays. Scores post automatically after each shift.
+            Scores post automatically after each shift. The board stores your name, your best score and a random id
+            for this device, and shows the name and score to everyone who plays. Nothing else is collected.
           </p>
         </Panel>
       )}
 
       <Panel className={`p-4 ${online ? "mt-4" : ""}`}>
-        <Ribbon tone="gold">Everyone</Ribbon>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Ribbon tone="gold">Everyone</Ribbon>
+          {online && (
+            <div role="radiogroup" aria-label="Period" className="sf-inset flex rounded-2xl p-1">
+              {(
+                [
+                  ["all", "All time"],
+                  ["week", "This week"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={period === value}
+                  onClick={() => {
+                    if (period === value) return;
+                    audio.play("uiClick");
+                    setStatus("loading");
+                    setPeriod(value);
+                  }}
+                  className={`min-h-10 rounded-xl px-3 text-xs font-extrabold ${
+                    period === value ? "sf-tile sf-tone-deep" : "text-muted"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {!online ? (
           <p className="mt-3 text-sm font-bold text-muted">
             The shared leaderboard is not switched on in this build. Your own best shifts are below.
@@ -134,7 +179,9 @@ export function LeaderboardScreen() {
             Could not reach the leaderboard. Check your connection and try again.
           </p>
         ) : entries.length === 0 ? (
-          <p className="mt-3 text-sm font-bold text-muted">No scores yet. Play a shift and be the first.</p>
+          <p className="mt-3 text-sm font-bold text-muted">
+            {period === "week" ? "No scores this week yet. Play a shift and be the first." : "No scores yet. Play a shift and be the first."}
+          </p>
         ) : (
           <ol className="mt-3 flex flex-col gap-1.5">
             {entries.map((entry) => (

@@ -1,4 +1,4 @@
-import { cleanName } from "@/game/core/leaderboard";
+import { cleanName, isNameAllowed } from "@/game/core/leaderboard";
 
 /**
  * The shared leaderboard, kept in a hosted Supabase database (see
@@ -20,6 +20,9 @@ export interface OnlineEntry {
   /** This row belongs to the player on this device. */
   you: boolean;
 }
+
+/** Which board to read: every player's best ever, or their best since Monday. */
+export type BoardPeriod = "all" | "week";
 
 export interface BoardConfig {
   url: string;
@@ -94,7 +97,7 @@ export async function submitScore(
   fetcher: Fetch = fetch,
 ): Promise<boolean> {
   const name = cleanName(entry.name);
-  if (!name || !(entry.score > 0)) return false;
+  if (!name || !isNameAllowed(name) || !(entry.score > 0)) return false;
   const response = await call(
     "submit_score",
     { p_player: getPlayerId(), p_name: name, p_score: Math.floor(entry.score), p_products: Math.floor(entry.products) },
@@ -104,13 +107,22 @@ export async function submitScore(
   return response !== null;
 }
 
-/** The top of the shared board, or null if it could not be reached. */
+/**
+ * The top of the shared board, followed by the player's own row if it is further down.
+ * Null if the board could not be reached.
+ */
 export async function fetchTopScores(
   limit = 20,
   config: BoardConfig = boardConfig,
   fetcher: Fetch = fetch,
+  period: BoardPeriod = "all",
 ): Promise<OnlineEntry[] | null> {
-  const response = await call("top_scores", { p_player: getPlayerId(), p_limit: limit }, config, fetcher);
+  const player = getPlayerId();
+  let response = await call("top_scores", { p_player: player, p_limit: limit, p_period: period }, config, fetcher);
+  // A database that has not had the second setup script run only knows the all-time board.
+  if (!response && period === "all") {
+    response = await call("top_scores", { p_player: player, p_limit: limit }, config, fetcher);
+  }
   if (!response) return null;
   try {
     const rows: unknown = await response.json();

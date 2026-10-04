@@ -17,6 +17,27 @@ export function addShiftRecord(list: ShiftRecord[], record: ShiftRecord): ShiftR
     .slice(0, LOCAL_BOARD_SIZE);
 }
 
+/**
+ * Words a public name may not contain. Matching ignores case, spacing and the usual
+ * letter-for-number swaps. The database applies the same list (docs/leaderboard-setup.md),
+ * so this copy only exists to tell the player before they post.
+ */
+const BLOCKED = [
+  "fuck", "shit", "bitch", "cunt", "dick", "cock", "pussy", "asshole", "bastard", "slut", "whore",
+  "nigg", "fag", "retard", "rape", "nazi", "hitler", "porn", "penis", "vagina",
+];
+
+const LEET: Record<string, string> = { "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", $: "s", "!": "i" };
+
+/** True when a (cleaned) name is fit to show to strangers. */
+export function isNameAllowed(name: string): boolean {
+  const flat = name
+    .toLowerCase()
+    .replace(/[013457@$!]/g, (c) => LEET[c] ?? c)
+    .replace(/[^a-z]/g, "");
+  return flat.length > 0 && !BLOCKED.some((word) => flat.includes(word));
+}
+
 /** A display name as the shared board accepts it: printable, single-spaced, at most 16 characters. */
 export function cleanName(raw: string): string {
   return raw
