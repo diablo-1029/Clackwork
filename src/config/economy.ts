@@ -36,9 +36,18 @@ export const economy = {
     completionBase: 5,
     goldenBonus: 5,
   },
+  /** XP to leave a level: base + step × (level − 1)^exponent. Gentle, so unlocks keep coming. */
   level: {
-    base: 100,
-    exponent: 1.35,
+    base: 70,
+    step: 45,
+    exponent: 1.25,
+  },
+  /** Coins paid on every level-up, so no level is ever empty-handed. */
+  levelBonus: {
+    perLevel: 25,
+    /** Every nth level is a milestone and pays this many times as much. */
+    milestoneEvery: 5,
+    milestoneFactor: 3,
   },
 } as const;
 

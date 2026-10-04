@@ -3,12 +3,14 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { getUnlocksAtLevel, type UnlockEntry, type UnlockKind } from "@/game/progression/unlocks";
+import { levelUpBonus } from "@/game/progression/levels";
+import { getNextUnlock, getUnlocksAtLevel, type UnlockEntry, type UnlockKind } from "@/game/progression/unlocks";
 
 const kindLabel: Record<UnlockKind, string> = {
   machine: "New machine",
   product: "New product",
   upgrade: "New upgrade",
+  technique: "New technique",
   theme: "New theme",
   feature: "New",
 };
@@ -17,6 +19,7 @@ const kindIcon: Record<UnlockKind, IconName> = {
   machine: "factory",
   product: "product",
   upgrade: "upgrades",
+  technique: "sparkle",
   theme: "theme",
   feature: "sparkle",
 };
@@ -25,6 +28,9 @@ const kindIcon: Record<UnlockKind, IconName> = {
 export function LevelUpOverlay({ levels, onContinue }: { levels: number[]; onContinue: () => void }) {
   const level = Math.max(...levels);
   const unlocks: UnlockEntry[] = levels.flatMap(getUnlocksAtLevel);
+  // Already paid when the level was reached; this only reports it.
+  const bonus = levels.reduce((sum, reached) => sum + levelUpBonus(reached), 0);
+  const next = getNextUnlock(level);
 
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-navy/45 p-4 backdrop-blur-[2px]">
@@ -50,6 +56,10 @@ export function LevelUpOverlay({ levels, onContinue }: { levels: number[]; onCon
         <h2 id="level-up-title" className="text-center text-2xl font-black tracking-wide">
           FACTORY LEVEL {level}
         </h2>
+        <p className="flex items-center gap-1.5 rounded-full bg-gold/20 px-3 py-1 text-sm font-black">
+          <Icon name="coin" size={18} />+{bonus} Coins
+          <span className="font-bold text-muted">level bonus</span>
+        </p>
 
         {unlocks.length > 0 ? (
           <ul className="flex w-full flex-col gap-2 overflow-y-auto">
@@ -75,7 +85,9 @@ export function LevelUpOverlay({ levels, onContinue }: { levels: number[]; onCon
             ))}
           </ul>
         ) : (
-          <p className="text-sm font-bold text-muted">Your factory keeps getting better.</p>
+          <p className="text-center text-sm font-bold text-muted">
+            {next ? `Next up at Level ${next.level}: ${next.name}.` : "Your factory keeps getting better."}
+          </p>
         )}
 
         <Button onClick={onContinue} className="w-full" autoFocus>

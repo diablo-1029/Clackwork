@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { xpRequired } from "@/game/progression/levels";
 import {
   SAVE_KEY,
   createFreshSave,
@@ -84,6 +85,17 @@ describe("save service", () => {
     older.player.factoryLevel = 12;
     expect(migrateSave(older)?.unlocks.products).toContain("toyRobot");
     expect(migrateSave(older)?.unlocks.machines).toContain("assembler");
+  });
+
+  it("keeps the level and clamps XP saved under an older, steeper curve", () => {
+    const save = createFreshSave();
+    save.player.factoryLevel = 8;
+    // Valid under the old curve (Level 8 needed 1,656 XP); the new one needs far less.
+    save.player.xp = 1500;
+    const migrated = migrateSave(save)!;
+    expect(migrated.player.factoryLevel).toBe(8);
+    expect(migrated.player.xp).toBe(xpRequired(8) - 1);
+    expect(xpRequired(8)).toBeLessThan(700);
   });
 
   it("survives storage being unavailable or throwing", () => {

@@ -1,6 +1,7 @@
 import { products } from "@/config/products";
 import { pacing } from "@/config/progression";
 import { clampQuality } from "@/game/economy/multipliers";
+import { levelUpBonus } from "@/game/progression/levels";
 import { resolveMachineSequence } from "@/game/progression/unlocks";
 import { devLog, track } from "@/lib/analytics";
 import { usePlayerStore } from "@/stores/playerStore";
@@ -29,6 +30,9 @@ function newRunId(): string {
 export function grantXp(amount: number): void {
   const levelsGained = usePlayerStore.getState().addXp(amount);
   if (levelsGained.length === 0) return;
+
+  // Every level reached pays its bonus here, the one place levels are gained, so exactly once.
+  usePlayerStore.getState().addCoins(levelsGained.reduce((sum, reached) => sum + levelUpBonus(reached), 0));
 
   const level = usePlayerStore.getState().factoryLevel;
   const newProducts = useProgressionStore.getState().syncUnlocks(level);

@@ -26,6 +26,8 @@ export interface CutPattern {
   segments: CutSegment[];
   /** Factory Level from which this pattern can appear. */
   minLevel: number;
+  /** Set on patterns worth announcing when they unlock. Patterns sharing a name are announced once. */
+  name?: string;
 }
 
 const { x, y, w, h } = PRODUCT_RECT;
@@ -49,10 +51,10 @@ export const cutPatterns: CutPattern[] = [
   { id: "diagonalRight", segments: [down(cx, 42)], minLevel: 1 },
   { id: "diagonalLeft", segments: [down(cx, -42)], minLevel: 1 },
   { id: "horizontal", segments: [across(cy)], minLevel: 1 },
-  { id: "doubleVertical", segments: [down(cx - 34), down(cx + 34)], minLevel: 2 },
-  { id: "doubleHorizontal", segments: [across(cy + 22), across(cy - 22)], minLevel: 2 },
-  { id: "doubleDiagonal", segments: [down(cx - 32, 30), down(cx + 32, 30)], minLevel: 6 },
-  { id: "tripleVertical", segments: [down(cx - 50), down(cx), down(cx + 50)], minLevel: 9 },
+  { id: "doubleVertical", segments: [down(cx - 34), down(cx + 34)], minLevel: 2, name: "Double cut" },
+  { id: "doubleHorizontal", segments: [across(cy + 22), across(cy - 22)], minLevel: 2, name: "Double cut" },
+  { id: "doubleDiagonal", segments: [down(cx - 32, 30), down(cx + 32, 30)], minLevel: 6, name: "Angled double cut" },
+  { id: "tripleVertical", segments: [down(cx - 50), down(cx), down(cx + 50)], minLevel: 9, name: "Triple cut" },
 ];
 
 export function getCutPattern(id: unknown): CutPattern | undefined {

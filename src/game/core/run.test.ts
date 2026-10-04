@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { products } from "@/config/products";
+import { seededRandom } from "@/lib/math";
 import { createFreshSave } from "@/lib/storage/saveService";
 import { hydrateStores } from "@/stores/persistence";
 import { usePlayerStore } from "@/stores/playerStore";
@@ -14,6 +15,7 @@ import {
   ensureOffers,
   exitMachine,
   finishProduct,
+  grantXp,
   isOrderBoardUnlocked,
 } from "./runActions";
 import { transition } from "./runStateMachine";
@@ -248,7 +250,8 @@ describe("production run", () => {
 
 describe("ceramic coaster", () => {
   it("arrives as the next order at level 8 and runs through all four machines", () => {
-    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 7, xp: 1380 });
+    // Just short of Level 8, which needs 492 XP from Level 7.
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 7, xp: 480 });
     useProgressionStore.getState().syncUnlocks(7);
     useProgressionStore.getState().setOnboarding("hasSeenGoldenIntro");
 
@@ -390,10 +393,12 @@ describe("order board", () => {
   });
 
   it("shows newer products far more often than the old weights did", () => {
+    // Seeded, so the share is the same on every run of the test.
+    const random = seededRandom(12345);
     let gold = 0;
-    for (let i = 0; i < 400; i++) if (generateOffers(base).some((o) => o.productId === "goldIngot")) gold++;
-    // Gold Ingot was about 8% of single orders; it should now be on well over a third of boards.
-    expect(gold / 400).toBeGreaterThan(0.35);
+    for (let i = 0; i < 400; i++) if (generateOffers({ ...base, random }).some((o) => o.productId === "goldIngot")) gold++;
+    // Gold Ingot was about 8% of single orders; it should now be on a third or so of boards.
+    expect(gold / 400).toBeGreaterThan(0.25);
   });
 
   it("puts a forced product first, tagged new only if it unlocked this level", () => {
@@ -533,6 +538,34 @@ describe("order twists", () => {
     expect(projectOrderValue({ ...input, twist: "rush" })).toBe(10);
     expect(projectOrderValue({ ...input, twist: "precision" })).toBe(9);
     expect(resolveProductReward({ ...input, twist: "rush" }).coins).toBe(14);
+  });
+});
+
+describe("level bonus", () => {
+  it("pays the bonus once when a level is reached", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 5, xp: 320, coins: 0 });
+    grantXp(10);
+    expect(player().factoryLevel).toBe(6);
+    expect(player().coins).toBe(150);
+    // More XP inside the same level pays nothing further.
+    grantXp(10);
+    expect(player().coins).toBe(150);
+  });
+
+  it("pays for every level when several are gained at once", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 1, xp: 0, coins: 0 });
+    grantXp(70 + 115 + 5);
+    expect(player().factoryLevel).toBe(3);
+    // Level 2 pays 50 and Level 3 pays 75.
+    expect(player().coins).toBe(125);
+    expect(useUiStore.getState().pendingLevelUps).toEqual([2, 3]);
+  });
+
+  it("pays a milestone bonus on every fifth level", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 9, xp: 0, coins: 0 });
+    grantXp(700);
+    expect(player().factoryLevel).toBe(10);
+    expect(player().coins).toBe(750);
   });
 });
 

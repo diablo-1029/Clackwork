@@ -3,6 +3,8 @@ import { productList } from "@/config/products";
 import { featureUnlocks } from "@/config/progression";
 import { themeList } from "@/config/themes";
 import { upgradeList } from "@/config/upgrades";
+import { cutPatterns } from "@/game/machines/cutter/cutterGeometry";
+import { machineVariants } from "@/game/machines/variants";
 import type { MachineId, ProductDefinition, ProductId } from "@/types/game";
 
 /** A product can only be produced when it is released and every machine in its chain is playable. */
@@ -41,7 +43,7 @@ export function stepName(product: ProductDefinition, sequence: MachineId[], inde
   return label ?? machines[sequence[index]]?.name ?? "";
 }
 
-export type UnlockKind = "machine" | "product" | "upgrade" | "theme" | "feature";
+export type UnlockKind = "machine" | "product" | "upgrade" | "technique" | "theme" | "feature";
 
 export interface UnlockEntry {
   kind: UnlockKind;
@@ -49,6 +51,38 @@ export interface UnlockEntry {
   name: string;
   description: string;
   level: number;
+}
+
+/**
+ * New ways for a machine to play that start coming up at `level`. A variant
+ * cannot appear before its machine does, so it is announced at whichever is later.
+ */
+function techniquesAtLevel(level: number): UnlockEntry[] {
+  const entries: UnlockEntry[] = [];
+  for (const machine of machineList.filter((m) => m.implemented)) {
+    for (const variant of machineVariants[machine.id].slice(1)) {
+      if (Math.max(variant.minLevel, machine.unlockLevel) !== level) continue;
+      entries.push({
+        kind: "technique",
+        id: `${machine.id}:${variant.id}`,
+        name: `${machine.name}: ${variant.name}`,
+        description: variant.instruction ?? machine.description,
+        level,
+      });
+    }
+  }
+  // Several cut patterns can share a name (the two double cuts); announce each name once.
+  const cuts = new Set(cutPatterns.filter((p) => p.name && p.minLevel === level).map((p) => p.name as string));
+  for (const name of cuts) {
+    entries.push({
+      kind: "technique",
+      id: `cutter:${name}`,
+      name: `${machines.cutter.name}: ${name}`,
+      description: "A new pattern for the Cutter.",
+      level,
+    });
+  }
+  return entries;
 }
 
 /** Everything that becomes available exactly at `level`, playable content only. */
@@ -66,6 +100,7 @@ export function getUnlocksAtLevel(level: number): UnlockEntry[] {
     ...featureUnlocks
       .filter((f) => f.unlockLevel === level)
       .map((f): UnlockEntry => ({ kind: "feature", id: f.id, name: f.name, description: f.description, level })),
+    ...techniquesAtLevel(level),
     ...themeList
       .filter((t) => t.cost > 0 && t.unlockLevel === level)
       .map((t): UnlockEntry => ({ kind: "theme", id: t.id, name: `${t.name} theme`, description: t.description, level })),

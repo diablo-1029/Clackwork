@@ -3,7 +3,15 @@ import { economy } from "@/config/economy";
 /** XP needed to go from `level` to `level + 1`. */
 export function xpRequired(level: number): number {
   const safeLevel = Math.max(1, Math.floor(level));
-  return Math.floor(economy.level.base * Math.pow(safeLevel, economy.level.exponent));
+  const { base, step, exponent } = economy.level;
+  return Math.floor(base + step * Math.pow(safeLevel - 1, exponent));
+}
+
+/** Coins paid for reaching `level`. */
+export function levelUpBonus(level: number): number {
+  const { perLevel, milestoneEvery, milestoneFactor } = economy.levelBonus;
+  const safeLevel = Math.max(1, Math.floor(level));
+  return perLevel * safeLevel * (safeLevel % milestoneEvery === 0 ? milestoneFactor : 1);
 }
 
 export interface XpGain {

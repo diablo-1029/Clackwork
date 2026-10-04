@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { products } from "@/config/products";
-import { applyXp, xpRequired } from "./levels";
+import { applyXp, levelUpBonus, xpRequired } from "./levels";
 import {
   getUnlocksAtLevel,
   isProductPlayable,
@@ -12,19 +12,41 @@ import {
 import { canPurchaseUpgrade, getUpgradeCost } from "./upgradeLogic";
 
 describe("xp thresholds", () => {
-  it("follows floor(100 × level^1.35)", () => {
-    expect(xpRequired(1)).toBe(100);
-    expect(xpRequired(2)).toBe(254);
-    expect(xpRequired(3)).toBe(440);
+  it("follows floor(70 + 45 × (level − 1)^1.25)", () => {
+    expect(xpRequired(1)).toBe(70);
+    expect(xpRequired(2)).toBe(115);
+    expect(xpRequired(3)).toBe(177);
+    expect(xpRequired(10)).toBe(771);
+  });
+
+  it("rises with every level, gently", () => {
+    for (let level = 1; level < 40; level++) {
+      expect(xpRequired(level + 1)).toBeGreaterThan(xpRequired(level));
+      // Past the first few, no level costs more than about a quarter more than the one before.
+      if (level > 4) expect(xpRequired(level + 1) / xpRequired(level)).toBeLessThan(1.3);
+    }
+  });
+
+  it("reaches the second machine after about nine Wood Blocks", () => {
+    // A Wood Block order pays roughly 21 XP.
+    expect((xpRequired(1) + xpRequired(2)) / 21).toBeLessThan(10);
   });
 
   it("carries leftover XP into the next level", () => {
-    expect(applyXp(1, 90, 25)).toEqual({ level: 2, xp: 15, levelsGained: [2] });
+    expect(applyXp(1, 60, 25)).toEqual({ level: 2, xp: 15, levelsGained: [2] });
   });
 
   it("can gain several levels at once", () => {
-    const gain = applyXp(1, 0, 100 + 254 + 10);
+    const gain = applyXp(1, 0, 70 + 115 + 10);
     expect(gain).toEqual({ level: 3, xp: 10, levelsGained: [2, 3] });
+  });
+
+  it("pays a coin bonus for every level, tripled on every fifth", () => {
+    expect(levelUpBonus(2)).toBe(50);
+    expect(levelUpBonus(6)).toBe(150);
+    expect(levelUpBonus(10)).toBe(750);
+    expect(levelUpBonus(11)).toBe(275);
+    expect(levelUpBonus(40)).toBe(3000);
   });
 
   it("ignores negative amounts", () => {
@@ -42,7 +64,12 @@ describe("unlocks", () => {
     expect(machinesUnlockedAt(3)).toContain("stamper");
     expect(productsUnlockedAt(3)).toContain("soapBar");
     // The order board arrives with the second product, when there is first something to choose.
-    expect(getUnlocksAtLevel(3).map((u) => u.id).sort()).toEqual(["orderBoard", "soapBar", "stamper"]);
+    expect(getUnlocksAtLevel(3).map((u) => u.id).sort()).toEqual([
+      "orderBoard",
+      "packager:down",
+      "soapBar",
+      "stamper",
+    ]);
   });
 
   it("unlocks the Polisher and Golden Touch at level 5", () => {
@@ -62,7 +89,12 @@ describe("unlocks", () => {
     expect(productsUnlockedAt(9)).not.toContain("crystal");
     expect(machinesUnlockedAt(10)).toContain("sorter");
     expect(productsUnlockedAt(10)).toContain("crystal");
-    expect(getUnlocksAtLevel(10).map((u) => u.id).sort()).toEqual(["crystal", "sorter", "sunsetShift"]);
+    expect(getUnlocksAtLevel(10).map((u) => u.id).sort()).toEqual([
+      "crystal",
+      "paintBooth:fine",
+      "sorter",
+      "sunsetShift",
+    ]);
   });
 
   it("unlocks the Assembler and Toy Robot together at level 12", () => {
@@ -70,7 +102,12 @@ describe("unlocks", () => {
     expect(productsUnlockedAt(11)).not.toContain("toyRobot");
     expect(machinesUnlockedAt(12)).toContain("assembler");
     expect(productsUnlockedAt(12)).toContain("toyRobot");
-    expect(getUnlocksAtLevel(12).map((u) => u.id).sort()).toEqual(["assembler", "candyLine", "toyRobot"]);
+    expect(getUnlocksAtLevel(12).map((u) => u.id).sort()).toEqual([
+      "assembler",
+      "candyLine",
+      "sorter:three",
+      "toyRobot",
+    ]);
   });
 
   it("names repeated steps by what they build, and other steps by their machine", () => {
@@ -86,6 +123,29 @@ describe("unlocks", () => {
     ]);
     const wood = products.woodBlock.machineSequence;
     expect(wood.map((_, i) => stepName(products.woodBlock, wood, i))).toEqual(["Cutter", "Packager"]);
+  });
+
+  it("announces new techniques, once each, and never before their machine", () => {
+    const ids = (level: number) => getUnlocksAtLevel(level).map((u) => u.id);
+    // The two double-cut patterns are one announcement.
+    expect(ids(2).filter((id) => id.startsWith("cutter:"))).toEqual(["cutter:Double cut"]);
+    expect(ids(4)).toEqual(expect.arrayContaining(["stamper:quick", "orderTwists"]));
+    expect(ids(7)).toEqual(["packager:cross"]);
+    expect(ids(9).sort()).toEqual(["cutter:Triple cut", "polisher:edges", "stamper:double"]);
+    expect(ids(13)).toEqual(["paintBooth:wide"]);
+
+    const techniques = Array.from({ length: 30 }, (_, i) => getUnlocksAtLevel(i + 1))
+      .flat()
+      .filter((u) => u.kind === "technique");
+    expect(new Set(techniques.map((u) => u.id)).size).toBe(techniques.length);
+    for (const technique of techniques) {
+      const machineId = technique.id.split(":")[0];
+      expect(machinesUnlockedAt(technique.level)).toContain(machineId);
+    }
+  });
+
+  it("gives every level from 2 to 10 something to unlock", () => {
+    for (let level = 2; level <= 10; level++) expect(getUnlocksAtLevel(level).length).toBeGreaterThan(0);
   });
 
   it("unlocks Gold Ingot at level 15", () => {

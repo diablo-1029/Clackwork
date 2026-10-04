@@ -3,7 +3,7 @@
  * (those carry their own `unlockLevel` in their config files).
  */
 export interface FeatureUnlock {
-  id: "orderBoard" | "streakIndicator" | "themeSelection";
+  id: "orderBoard" | "orderTwists" | "streakIndicator" | "themeSelection";
   name: string;
   description: string;
   unlockLevel: number;
@@ -15,6 +15,13 @@ export const featureUnlocks: FeatureUnlock[] = [
     name: "Order Board",
     description: "Choose your next order from three cards.",
     unlockLevel: 3,
+  },
+  {
+    // Keep in step with orderBoard.twistMinLevel in config/economy.ts.
+    id: "orderTwists",
+    name: "Order Twists",
+    description: "Some order cards now carry a twist that changes what they pay.",
+    unlockLevel: 4,
   },
   {
     id: "streakIndicator",
