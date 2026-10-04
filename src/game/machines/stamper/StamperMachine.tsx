@@ -7,6 +7,7 @@ import { getMaterialColors, materialProfiles } from "@/game/products/materialPro
 import { stampMark, stampOffset } from "@/game/products/productLook";
 import { ProductBody, ProductImprint } from "@/game/products/ProductRenderer";
 import { STAGE, type MachineProps } from "../shared";
+import { StepPips } from "../StepPips";
 import { calculateStamperQuality, markerPosition, nearestTarget, stampPlan, stamperTuning } from "./stamperScoring";
 
 const TRACK = { x: 60, y: 262, w: 280, h: 14 } as const;
@@ -176,6 +177,8 @@ export function StamperMachine({
             </g>
           );
         })}
+
+        {plan.targets.length > 1 && <StepPips total={plan.targets.length} done={presses.length} x={356} y={150} />}
 
         <g ref={markerRef} transform={`translate(${TRACK.x} 0)`}>
           <rect x="-2.5" y={TRACK.y - 8} width="5" height={TRACK.h + 16} rx="2.5" fill="#ffffff" stroke="var(--fx-machine-dark)" strokeWidth="1.5" />

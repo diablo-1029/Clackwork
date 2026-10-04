@@ -68,6 +68,7 @@ export interface MachineDefinition {
   /** One short line shown under the machine while it is active. */
   instruction: string;
   unlockLevel: number;
+  /** Hands-on seconds a typical go at the basic variant takes; sets the Rush target. */
   estimatedDurationSeconds: number;
   baseDifficulty: number;
   icon: string;
@@ -104,6 +105,11 @@ export interface ProductDefinition {
    * visit one machine several times. `null` falls back to the machine's name.
    */
   stepLabels?: (string | null)[];
+  /**
+   * Scales the XP each machine step pays. Products with many short steps use
+   * less than 1 so they do not out-earn everything else per order.
+   */
+  stepXpScale?: number;
   /** Optional instruction per step, aligned with `machineSequence`; `null` uses the machine's own. */
   stepHints?: (string | null)[];
   /** Later variants win; used when a newly unlocked machine extends the chain. */

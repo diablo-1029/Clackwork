@@ -147,6 +147,16 @@ export const goldenColors: MaterialProfileDefinition["colors"] = {
   particles: ["#fff4bd", "#ffcf3d", "#ffffff", "#ffb300"],
 };
 
+/** Golden on a product that is already gold: paler and brighter, so it still reads as special. */
+export const radiantColors: MaterialProfileDefinition["colors"] = {
+  light: "#fffdf0",
+  base: "#fff0b3",
+  dark: "#d9b64a",
+  detail: "#f3d877",
+  particles: ["#ffffff", "#fff0b3", "#ffe066"],
+};
+
 export function getMaterialColors(material: MaterialProfile, isGolden: boolean) {
-  return isGolden ? goldenColors : materialProfiles[material].colors;
+  if (!isGolden) return materialProfiles[material].colors;
+  return material === "gold" ? radiantColors : goldenColors;
 }

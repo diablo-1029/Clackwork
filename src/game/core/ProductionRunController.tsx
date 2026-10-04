@@ -176,7 +176,12 @@ export function ProductionRunController() {
     return (
       <div className="sf-stage relative h-full overflow-hidden rounded-3xl">
         <div className="sf-belt absolute inset-x-0 bottom-0 h-3" aria-hidden />
-        {boardPanel}
+        {/* Levels gained outside an order are celebrated before the cards are dealt. */}
+        {pendingLevelUps.length > 0 ? (
+          <LevelUpOverlay levels={pendingLevelUps} onContinue={clearLevelUps} />
+        ) : (
+          offers.length > 0 && boardPanel
+        )}
       </div>
     );
   }

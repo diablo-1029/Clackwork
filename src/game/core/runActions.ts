@@ -173,7 +173,7 @@ export function completeMachine(outcome: MachineOutcome): boolean {
   if (!committed) return false;
 
   const player = usePlayerStore.getState();
-  const reward = resolveMachineReward(quality, player.perfectStreak);
+  const reward = resolveMachineReward(quality, player.perfectStreak, products[run.productId]?.stepXpScale);
   player.setStreak(reward.streak);
   if (reward.isPerfect) player.incrementPerfect();
   grantXp(reward.xp);

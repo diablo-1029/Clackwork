@@ -87,7 +87,26 @@ export function ProductBody({ material, isGolden = false, richness = 0, x, y, w,
         <clipPath id={`${id}-clip`}>
           <rect x={x} y={y} width={w} height={h} rx={r} />
         </clipPath>
+        {isGolden && (
+          <filter id={`${id}-glow`} x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation={Math.max(2, h * 0.07)} />
+          </filter>
+        )}
       </defs>
+
+      {/* A soft halo marks every Golden product, whatever it is made of. */}
+      {isGolden && (
+        <rect
+          className="sf-glow"
+          x={x - h * 0.05}
+          y={y - h * 0.05}
+          width={w + h * 0.1}
+          height={h + depth + h * 0.1}
+          rx={r + h * 0.05}
+          fill="#ffd54a"
+          filter={`url(#${id}-glow)`}
+        />
+      )}
 
       <rect x={x} y={y + depth} width={w} height={h} rx={r} fill={colors.dark} />
       <rect x={x} y={y} width={w} height={h} rx={r} fill={`url(#${id}-fill)`} />

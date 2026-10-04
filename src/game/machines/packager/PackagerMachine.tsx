@@ -8,6 +8,7 @@ import { ProductBody } from "@/game/products/ProductRenderer";
 import { distance, measureTrace, type Point } from "@/lib/math";
 import { useTraceDrag, type DragSession } from "@/lib/pointer/useTraceDrag";
 import { STAGE, type MachineProps } from "../shared";
+import { StepPips } from "../StepPips";
 import { calculatePackagerQuality, isTapeAttempt, tapeRuns } from "./packagerScoring";
 
 const BOX = { x: 96, y: 66, w: 208, h: 168, r: 12 } as const;
@@ -251,6 +252,8 @@ export function PackagerMachine({
           </g>
         )}
       </motion.g>
+
+      {runs.length > 1 && <StepPips total={runs.length} done={laid.length} x={344} y={30} />}
 
       {/* Dispenser, sitting behind the start of the strip on offer */}
       {!sealed && (

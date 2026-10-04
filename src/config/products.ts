@@ -68,6 +68,8 @@ export const products: Record<ProductId, ProductDefinition> = {
     // (the steps themselves are defined in machines/assembler/assemblerScoring.ts).
     machineSequence: ["paintBooth", "assembler", "assembler", "assembler", "assembler", "assembler", "packager"],
     stepLabels: [null, "Head", "Arms", "Legs", "Torso", "Build", null],
+    // Seven short steps: at full XP each, a robot would pay nearly double any other order.
+    stepXpScale: 0.5,
     stepHints: [
       null,
       "Fit the eyes, mouth and aerial.",

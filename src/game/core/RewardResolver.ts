@@ -24,10 +24,10 @@ export interface MachineReward {
   isPerfect: boolean;
 }
 
-export function resolveMachineReward(quality: number, currentStreak: number): MachineReward {
+export function resolveMachineReward(quality: number, currentStreak: number, xpScale = 1): MachineReward {
   const q = clampQuality(quality);
   return {
-    xp: calculateMachineXp(q),
+    xp: calculateMachineXp(q, xpScale),
     streak: nextStreak(currentStreak, q),
     isPerfect: q >= 100,
   };
@@ -61,7 +61,7 @@ export function resolveProductReward(input: ProductRewardInput): ProductReward {
     quality,
     // Only time spent working the machines counts, never the pauses between them.
     activeMs: input.results.reduce((total, r) => total + r.durationMs, 0),
-    parMs: parTimeMs(input.results.map((r) => r.machineId)),
+    parMs: parTimeMs(input.results),
   });
 
   const coins = calculateCoins({
@@ -71,7 +71,10 @@ export function resolveProductReward(input: ProductRewardInput): ProductReward {
     upgradeLevels: input.upgradeLevels,
     isGolden: input.isGolden,
   });
-  const machineXp = input.results.reduce((total, r) => total + calculateMachineXp(r.quality), 0);
+  const machineXp = input.results.reduce(
+    (total, r) => total + calculateMachineXp(r.quality, input.product.stepXpScale),
+    0,
+  );
   const completionXp = calculateCompletionXp(input.results.length, input.isGolden);
 
   return {

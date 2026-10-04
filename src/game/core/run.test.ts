@@ -484,10 +484,19 @@ describe("order twists", () => {
     });
   });
 
-  it("sets par from the chain's machines", () => {
-    // Cutter 4 s + Packager 4 s, times the par factor of 0.8.
-    expect(parTimeMs(["cutter", "packager"])).toBe(6400);
-    expect(parTimeMs(["cutter", "stamper", "polisher", "packager"])).toBeGreaterThan(parTimeMs(["cutter", "packager"]));
+  it("sets par from the steps played, with more time for steps that asked for more", () => {
+    const step = (machineId: "cutter" | "packager" | "stamper" | "polisher", metadata?: Record<string, unknown>) => ({
+      machineId,
+      metadata,
+    });
+    // Cutter 3 s + Packager 3 s.
+    expect(parTimeMs([step("cutter"), step("packager")])).toBe(6000);
+    expect(parTimeMs([step("cutter"), step("stamper"), step("polisher"), step("packager")])).toBe(17000);
+    // A triple cut and a cross tape each add 60% of the machine's time per extra part.
+    expect(parTimeMs([step("cutter", { cuts: [100, 100, 100] }), step("packager", { strips: [100, 100] })])).toBeCloseTo(
+      3000 * 2.2 + 3000 * 1.6,
+    );
+    expect(parTimeMs([])).toBe(0);
   });
 
   const playOrder = (twist: "rush" | "precision" | "training", quality: number) => {
@@ -498,7 +507,7 @@ describe("order twists", () => {
   };
 
   it("applies a twist to the payout, once, and reports the outcome", () => {
-    // playMachine reports 1.2 s per machine: 2.4 s, well under the 6.4 s par.
+    // playMachine reports 1.2 s per machine: 2.4 s, well under the 6 s par.
     const rush = playOrder("rush", 75);
     expect(rush).toMatchObject({ coins: 14, twist: { kind: "rush", achieved: true } });
     expect(player().coins).toBe(14);
@@ -566,6 +575,20 @@ describe("level bonus", () => {
     grantXp(700);
     expect(player().factoryLevel).toBe(10);
     expect(player().coins).toBe(750);
+  });
+});
+
+describe("toy robot xp", () => {
+  it("pays about what other four-step products pay, not double", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 12 });
+    useProgressionStore.getState().syncUnlocks(12);
+    const order = createOrder({ id: "r", productId: "toyRobot", isGolden: false });
+    run().dispatch("INTRO_DONE");
+    order!.machineSequence.forEach(() => playMachine(100));
+    const summary = finishProduct()!;
+    // Seven steps at half XP (4 each) plus the completion bonus of 5 + 7.
+    expect(summary.xp).toBe(40);
+    expect(player().xp).toBe(40);
   });
 });
 

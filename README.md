@@ -8,6 +8,7 @@ factory themes.
 - Seven machines and six products, with Perfect streaks and rare Golden orders
 - Machines play differently from order to order, with more variants as the factory levels up
 - From Level 3 you pick each order from three cards, some with a twist (Rush, Precision, Training)
+- Every level-up pays a coin bonus and announces what it unlocks; the level curve lives in `src/config/economy.ts`
 - Works with mouse, pen and touch
 - Light and dark modes, five factory themes, reduced-motion and sound settings
 - Frontend only: a static site with progress saved in the browser (`localStorage`)

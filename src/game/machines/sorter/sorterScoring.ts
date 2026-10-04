@@ -102,7 +102,9 @@ export function calculateSorterQuality(picks: SortPick[]): number {
   const t = sorterTuning;
 
   const accuracy = picks.filter((pick) => pick.correct).length / picks.length;
-  const averageMs = picks.reduce((sum, pick) => sum + Math.max(0, pick.reactionMs), 0) / picks.length;
+  // Each pick counts for at most `slowMs`, so one long pause costs one pick's worth, not the lot.
+  const averageMs =
+    picks.reduce((sum, pick) => sum + clamp(pick.reactionMs, 0, t.slowMs), 0) / picks.length;
   const speed = 1 - clamp((averageMs - t.relaxedMs) / (t.slowMs - t.relaxedMs), 0, 1);
 
   return Math.round(clamp(100 * (accuracy * t.accuracyWeight + speed * t.speedWeight), 0, 100));

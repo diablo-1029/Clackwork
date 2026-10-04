@@ -177,6 +177,11 @@ button:disabled {
   animation: sf-twinkle 1.6s ease-in-out infinite;
 }
 
+.sf-glow {
+  opacity: 0.6;
+  animation: sf-glow 1.8s ease-in-out infinite;
+}
+
 .sf-guide line[stroke-dasharray] {
   animation: sf-dash 0.9s linear infinite;
 }
@@ -231,6 +236,16 @@ button:disabled {
   }
 }
 
+@keyframes sf-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
 @keyframes sf-dash {
   to {
     stroke-dashoffset: -14;
@@ -252,6 +267,7 @@ button:disabled {
 [data-reduced-motion="true"] .sf-pulse,
 [data-reduced-motion="true"] .sf-twinkle,
 [data-reduced-motion="true"] .sf-shine,
+[data-reduced-motion="true"] .sf-glow,
 [data-reduced-motion="true"] .sf-stage-perfect::after,
 [data-reduced-motion="true"] .sf-guide line[stroke-dasharray] {
   animation: none;

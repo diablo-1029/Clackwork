@@ -9,6 +9,7 @@ import { ProductBody } from "@/game/products/ProductRenderer";
 import { distance, lerp, measureTrace } from "@/lib/math";
 import { useTraceDrag, type DragSession } from "@/lib/pointer/useTraceDrag";
 import { PRODUCT_RECT, STAGE, type MachineProps } from "../shared";
+import { StepPips } from "../StepPips";
 import { pickCutPattern, pieceShift, splitAlong } from "./cutterGeometry";
 import { calculateCutterQuality, isCutAttempt } from "./cutterScoring";
 
@@ -267,6 +268,8 @@ export function CutterMachine({
           transition={{ duration: 0.35, ease: "easeOut" }}
         />
       )}
+
+      {total > 1 && <StepPips total={total} done={cutsDone} x={STAGE.w / 2} y={270} />}
 
       {/* Blade */}
       <g ref={bladeRef} transform={`translate(${from.x} ${from.y})`} opacity={allCut ? 0 : 1} style={{ pointerEvents: "none" }}>

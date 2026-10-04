@@ -98,6 +98,13 @@ describe("xp", () => {
     expect(calculateMachineXp(100)).toBe(7);
   });
 
+  it("scales step XP for products with many short steps, never below 1", () => {
+    expect(calculateMachineXp(100, 0.5)).toBe(4);
+    expect(calculateMachineXp(0, 0.5)).toBe(1);
+    expect(calculateMachineXp(0, 0.1)).toBe(1);
+    expect(calculateMachineXp(100, 1)).toBe(7);
+  });
+
   it("adds a completion bonus, with a flat Golden bonus rather than a multiplier", () => {
     expect(calculateCompletionXp(2, false)).toBe(7);
     expect(calculateCompletionXp(4, false)).toBe(9);

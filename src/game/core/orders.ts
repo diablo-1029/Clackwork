@@ -90,9 +90,24 @@ export function generateOffers({
   });
 }
 
-/** Hands-on time a chain is expected to take, used as the target for Rush orders. */
-export function parTimeMs(sequence: MachineId[]): number {
-  const seconds = sequence.reduce((sum, id) => sum + (machines[id]?.estimatedDurationSeconds ?? 0), 0);
+/** How many actions a step asked for: two cuts, two strips of tape or two stamps count as two. */
+function partsOf(metadata: Record<string, unknown> | undefined): number {
+  for (const key of ["cuts", "strips", "presses"]) {
+    const parts = metadata?.[key];
+    if (Array.isArray(parts)) return Math.max(1, parts.length);
+  }
+  return 1;
+}
+
+/**
+ * Hands-on time the steps played are expected to take, used as the target for
+ * Rush orders. Steps that asked for more than one action get more time.
+ */
+export function parTimeMs(steps: { machineId: MachineId; metadata?: Record<string, unknown> }[]): number {
+  const seconds = steps.reduce((sum, step) => {
+    const base = machines[step.machineId]?.estimatedDurationSeconds ?? 0;
+    return sum + base * (1 + orderTwists.rush.extraPartFactor * (partsOf(step.metadata) - 1));
+  }, 0);
   return seconds * 1000 * orderTwists.rush.parFactor;
 }
 

@@ -64,7 +64,8 @@ export const orderBoard = {
 /** First guesses, to be tuned by play. */
 export const orderTwists = {
   /** Bonus for finishing under par. Missing par costs nothing. */
-  rush: { coinBonus: 0.4, parFactor: 0.8 },
+  /** Extra parts of a step (a second cut, strip or stamp) each add this share of the machine's time. */
+  rush: { coinBonus: 0.4, parFactor: 1, extraPartFactor: 0.6 },
   /** A bigger payout for a clean product, a slightly smaller one otherwise. */
   precision: { minQuality: 95, coinBonus: 0.6, coinPenalty: 0.15 },
   training: { xpBonus: 0.5 },

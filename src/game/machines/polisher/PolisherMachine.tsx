@@ -109,13 +109,22 @@ export function PolisherMachine({
     }
     ctx.restore();
 
+    // Clear the film over clean cells with soft, overlapping brushes: the inside of a
+    // clean area ends up fully clear and its border fades, instead of showing each cell.
     ctx.globalCompositeOperation = "destination-out";
+    const reach = CELL_W * 1.8;
     for (let i = 0; i < cells.current.length; i++) {
       const value = cells.current[i];
       if (value <= 0) continue;
-      ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, value)})`;
+      const cx = x + ((i % cols) + 0.5) * CELL_W;
+      const cy = y + (Math.floor(i / cols) + 0.5) * CELL_H;
+      const brush = ctx.createRadialGradient(cx, cy, 0, cx, cy, reach);
+      brush.addColorStop(0, `rgba(0, 0, 0, ${Math.min(1, value)})`);
+      brush.addColorStop(0.55, `rgba(0, 0, 0, ${Math.min(1, value) * 0.6})`);
+      brush.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = brush;
       ctx.beginPath();
-      ctx.arc(x + ((i % cols) + 0.5) * CELL_W, y + (Math.floor(i / cols) + 0.5) * CELL_H, CELL_W * 0.95, 0, Math.PI * 2);
+      ctx.arc(cx, cy, reach, 0, Math.PI * 2);
       ctx.fill();
     }
   }, [runId]);

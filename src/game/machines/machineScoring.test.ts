@@ -310,6 +310,15 @@ describe("sorter scoring", () => {
     expect(calculateSorterQuality(picks([true, true, true, true, true], 2750))).toBe(90);
   });
 
+  it("counts one long pause as one slow pick, not a slow run", () => {
+    const paused = [
+      { correct: true, reactionMs: 120_000 },
+      ...picks([true, true, true, true]),
+    ];
+    // (4000 + 4 x 800) / 5 = 1440 ms on average: still inside the relaxed pace.
+    expect(calculateSorterQuality(paused)).toBe(100);
+  });
+
   it("builds a stable, mixed queue for each run", () => {
     expect(createSortQueue("run-a")).toEqual(createSortQueue("run-a"));
     for (let i = 0; i < 200; i++) {
