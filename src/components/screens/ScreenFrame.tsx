@@ -1,23 +1,36 @@
 import type { ReactNode } from "react";
+import { Chip } from "@/components/ui/Chunky";
+import { Icon, type IconName } from "@/components/ui/Icon";
 
 interface ScreenFrameProps {
   title: string;
+  icon: IconName;
   intro?: string;
+  /** Shown at the right of the header band, e.g. a collection counter. */
+  aside?: ReactNode;
   /** Keep the content in a readable column instead of spanning a wide window. */
   narrow?: boolean;
   children: ReactNode;
 }
 
-/** Shared scrollable layout for the menu screens. */
-export function ScreenFrame({ title, intro, narrow, children }: ScreenFrameProps) {
+/** Shared scrollable layout for the menu screens: a coloured header band over raised cards. */
+export function ScreenFrame({ title, icon, intro, aside, narrow, children }: ScreenFrameProps) {
   return (
-    <section className="h-full overflow-y-auto rounded-3xl bg-surface p-4 sm:p-6" aria-labelledby="screen-title">
-      <div className={narrow ? "mx-auto max-w-3xl" : undefined}>
-        <h2 id="screen-title" className="text-2xl font-black tracking-tight">
-          {title}
-        </h2>
-        {intro && <p className="mt-0.5 text-sm font-bold text-muted">{intro}</p>}
-        <div className="mt-4">{children}</div>
+    <section className="h-full overflow-y-auto rounded-3xl" aria-labelledby="screen-title">
+      <div className={`pb-2 ${narrow ? "mx-auto max-w-3xl" : ""}`}>
+        <header className="sf-tile sf-tone-deep flex items-center gap-3 rounded-3xl px-3 py-3 sm:px-5">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white/20" aria-hidden>
+            <Icon name={icon} size={26} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 id="screen-title" className="text-2xl leading-tight font-black tracking-tight">
+              {title}
+            </h2>
+            {intro && <p className="text-xs font-bold opacity-85 sm:text-sm">{intro}</p>}
+          </div>
+          {aside}
+        </header>
+        <div className="mt-3">{children}</div>
       </div>
     </section>
   );
@@ -25,6 +38,9 @@ export function ScreenFrame({ title, intro, narrow, children }: ScreenFrameProps
 
 export function LockedTag({ level }: { level: number }) {
   return (
-    <span className="rounded-lg bg-surface-2 px-2 py-1 text-xs font-extrabold text-muted">Unlocks at Level {level}</span>
+    <Chip className="text-muted">
+      <Icon name="lock" size={12} />
+      Unlocks at Level {level}
+    </Chip>
   );
 }

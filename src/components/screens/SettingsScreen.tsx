@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { audio } from "@/audio/audioManager";
 import { DebugPanel } from "@/components/overlays/DebugPanel";
 import { Button } from "@/components/ui/Button";
+import { Panel, Ribbon } from "@/components/ui/Chunky";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { resetGame } from "@/stores/persistence";
 import { usePlayerStore } from "@/stores/playerStore";
@@ -36,8 +37,14 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
       }}
       className="flex h-11 w-16 shrink-0 items-center"
     >
-      <span className={`flex h-8 w-14 items-center rounded-full p-1 transition-colors ${checked ? "bg-brand" : "bg-line"}`}>
-        <span className={`size-6 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-6" : ""}`} />
+      <span
+        className={`flex h-8 w-14 items-center rounded-full border-2 p-0.5 transition-colors ${
+          checked ? "border-brand-deep bg-brand" : "sf-inset border-line"
+        }`}
+      >
+        <span
+          className={`size-6 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-6" : ""}`}
+        />
       </span>
     </button>
   );
@@ -55,7 +62,7 @@ function Segmented<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex shrink-0 rounded-2xl bg-surface-2 p-1">
+    <div role="radiogroup" aria-label={label} className="sf-inset flex shrink-0 rounded-2xl p-1">
       {options.map((option) => (
         <button
           key={option.value}
@@ -67,7 +74,7 @@ function Segmented<T extends string>({
             audio.play("uiClick");
           }}
           className={`flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-extrabold transition-colors ${
-            value === option.value ? "bg-brand-deep text-white" : "text-muted"
+            value === option.value ? "sf-tile sf-tone-deep" : "text-muted"
           }`}
         >
           {option.icon && <Icon name={option.icon} size={16} />}
@@ -78,7 +85,17 @@ function Segmented<T extends string>({
   );
 }
 
-function Volume({ label, value, disabled, onChange }: { label: string; value: number; disabled: boolean; onChange: (value: number) => void }) {
+function Volume({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  disabled: boolean;
+  onChange: (value: number) => void;
+}) {
   return (
     <input
       type="range"
@@ -104,100 +121,125 @@ export function SettingsScreen() {
   const { audio: sound } = settings;
 
   return (
-    <ScreenFrame title="Settings" narrow>
-      <h3 className="text-xs font-black tracking-widest text-muted uppercase">Sound</h3>
-      <Row label="Sound">
-        <Toggle
-          label="Sound"
-          checked={sound.masterEnabled}
-          onChange={(masterEnabled) => {
-            if (masterEnabled) audio.unlock();
-            settings.setAudio({ masterEnabled });
-          }}
-        />
-      </Row>
-      <Row label="Master volume">
-        <Volume label="Master volume" value={sound.masterVolume} disabled={!sound.masterEnabled} onChange={(masterVolume) => settings.setAudio({ masterVolume })} />
-      </Row>
-      <Row label="Sound effects">
-        <div className="flex items-center gap-2">
-          <Volume label="Sound effects volume" value={sound.sfxVolume} disabled={!sound.masterEnabled || !sound.sfxEnabled} onChange={(sfxVolume) => settings.setAudio({ sfxVolume })} />
-          <Toggle label="Sound effects" checked={sound.sfxEnabled} onChange={(sfxEnabled) => settings.setAudio({ sfxEnabled })} />
-        </div>
-      </Row>
-      <Row label="Factory ambience" hint="A quiet background hum.">
-        <div className="flex items-center gap-2">
-          <Volume label="Ambience volume" value={sound.musicVolume} disabled={!sound.masterEnabled || !sound.musicEnabled} onChange={(musicVolume) => settings.setAudio({ musicVolume })} />
+    <ScreenFrame title="Settings" icon="settings" narrow>
+      <Panel className="p-4">
+        <Ribbon tone="blue">Sound</Ribbon>
+        <Row label="Sound">
           <Toggle
-            label="Factory ambience"
-            checked={sound.musicEnabled}
-            onChange={(musicEnabled) => {
-              if (musicEnabled) audio.unlock();
-              settings.setAudio({ musicEnabled });
+            label="Sound"
+            checked={sound.masterEnabled}
+            onChange={(masterEnabled) => {
+              if (masterEnabled) audio.unlock();
+              settings.setAudio({ masterEnabled });
             }}
           />
-        </div>
-      </Row>
-
-      <h3 className="mt-6 text-xs font-black tracking-widest text-muted uppercase">Display</h3>
-      <Row label="Appearance" hint="Menus and panels. Factory themes are separate.">
-        <Segmented<ThemeMode>
-          label="Appearance"
-          value={settings.themeMode}
-          onChange={settings.setThemeMode}
-          options={[
-            { value: "light", label: "Light", icon: "sun" },
-            { value: "dark", label: "Dark", icon: "moon" },
-            { value: "system", label: "System" },
-          ]}
-        />
-      </Row>
-      <Row label="Reduced motion" hint="Fewer particles, fades instead of slides.">
-        <Toggle label="Reduced motion" checked={settings.reducedMotion} onChange={settings.setReducedMotion} />
-      </Row>
-      <Row label="Particles">
-        <Segmented<ParticleDensity>
-          label="Particle density"
-          value={settings.particleDensity}
-          onChange={settings.setParticleDensity}
-          options={[
-            { value: "low", label: "Low" },
-            { value: "medium", label: "Medium" },
-            { value: "high", label: "High" },
-          ]}
-        />
-      </Row>
-
-      <h3 className="mt-6 text-xs font-black tracking-widest text-muted uppercase">Factory</h3>
-      <Row label="Products completed">
-        <span className="font-black tabular-nums">{totalProducts.toLocaleString("en-US")}</span>
-      </Row>
-      <Row label="Perfect results">
-        <span className="font-black tabular-nums">{totalPerfects.toLocaleString("en-US")}</span>
-      </Row>
-      <Row label="Reset progress" hint="Erases coins, levels, upgrades and settings on this device.">
-        {confirmingReset ? (
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setConfirmingReset(false)}>
-              Keep
-            </Button>
-            <Button
-              variant="secondary"
-              className="!bg-red-600"
-              onClick={() => {
-                setConfirmingReset(false);
-                resetGame();
-              }}
-            >
-              Erase everything
-            </Button>
+        </Row>
+        <Row label="Master volume">
+          <Volume
+            label="Master volume"
+            value={sound.masterVolume}
+            disabled={!sound.masterEnabled}
+            onChange={(masterVolume) => settings.setAudio({ masterVolume })}
+          />
+        </Row>
+        <Row label="Sound effects">
+          <div className="flex items-center gap-2">
+            <Volume
+              label="Sound effects volume"
+              value={sound.sfxVolume}
+              disabled={!sound.masterEnabled || !sound.sfxEnabled}
+              onChange={(sfxVolume) => settings.setAudio({ sfxVolume })}
+            />
+            <Toggle
+              label="Sound effects"
+              checked={sound.sfxEnabled}
+              onChange={(sfxEnabled) => settings.setAudio({ sfxEnabled })}
+            />
           </div>
-        ) : (
-          <Button variant="ghost" onClick={() => setConfirmingReset(true)}>
-            Reset
-          </Button>
-        )}
-      </Row>
+        </Row>
+        <Row label="Factory ambience" hint="A quiet background hum.">
+          <div className="flex items-center gap-2">
+            <Volume
+              label="Ambience volume"
+              value={sound.musicVolume}
+              disabled={!sound.masterEnabled || !sound.musicEnabled}
+              onChange={(musicVolume) => settings.setAudio({ musicVolume })}
+            />
+            <Toggle
+              label="Factory ambience"
+              checked={sound.musicEnabled}
+              onChange={(musicEnabled) => {
+                if (musicEnabled) audio.unlock();
+                settings.setAudio({ musicEnabled });
+              }}
+            />
+          </div>
+        </Row>
+      </Panel>
+
+      <Panel className="mt-4 p-4">
+        <Ribbon tone="orange">Display</Ribbon>
+        <Row label="Appearance" hint="Menus and panels. Factory themes are separate.">
+          <Segmented<ThemeMode>
+            label="Appearance"
+            value={settings.themeMode}
+            onChange={settings.setThemeMode}
+            options={[
+              { value: "light", label: "Light", icon: "sun" },
+              { value: "dark", label: "Dark", icon: "moon" },
+              { value: "system", label: "System" },
+            ]}
+          />
+        </Row>
+        <Row label="Reduced motion" hint="Fewer particles, fades instead of slides.">
+          <Toggle label="Reduced motion" checked={settings.reducedMotion} onChange={settings.setReducedMotion} />
+        </Row>
+        <Row label="Particles">
+          <Segmented<ParticleDensity>
+            label="Particle density"
+            value={settings.particleDensity}
+            onChange={settings.setParticleDensity}
+            options={[
+              { value: "low", label: "Low" },
+              { value: "medium", label: "Medium" },
+              { value: "high", label: "High" },
+            ]}
+          />
+        </Row>
+      </Panel>
+
+      <Panel className="mt-4 p-4">
+        <Ribbon tone="green">Factory</Ribbon>
+        <Row label="Products completed">
+          <span className="font-black tabular-nums">{totalProducts.toLocaleString("en-US")}</span>
+        </Row>
+        <Row label="Perfect results">
+          <span className="font-black tabular-nums">{totalPerfects.toLocaleString("en-US")}</span>
+        </Row>
+        <Row label="Reset progress" hint="Erases coins, levels, upgrades and settings on this device.">
+          {confirmingReset ? (
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => setConfirmingReset(false)}>
+                Keep
+              </Button>
+              <Button
+                variant="secondary"
+                className="!bg-red-600"
+                onClick={() => {
+                  setConfirmingReset(false);
+                  resetGame();
+                }}
+              >
+                Erase everything
+              </Button>
+            </div>
+          ) : (
+            <Button variant="ghost" onClick={() => setConfirmingReset(true)}>
+              Reset
+            </Button>
+          )}
+        </Row>
+      </Panel>
 
       {process.env.NODE_ENV === "development" && <DebugPanel />}
     </ScreenFrame>
