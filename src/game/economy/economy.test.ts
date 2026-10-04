@@ -197,11 +197,11 @@ describe("fast learner and fresh orders", () => {
 
 describe("upgrade shop", () => {
   it("prices the new upgrades from their config", () => {
-    expect(getUpgradeCost("steadyHands", 0)).toBe(80);
-    expect(getUpgradeCost("steadyHands", 4)).toBe(840);
-    expect(getUpgradeCost("streakShield", 2)).toBe(726);
-    expect(getUpgradeCost("freshOrders", 1)).toBe(240);
-    expect(getUpgradeCost("fastLearner", 0)).toBe(100);
+    expect(getUpgradeCost("steadyHands", 0)).toBe(120);
+    expect(getUpgradeCost("steadyHands", 4)).toBe(3358);
+    expect(getUpgradeCost("streakShield", 2)).toBe(2250);
+    expect(getUpgradeCost("freshOrders", 1)).toBe(600);
+    expect(getUpgradeCost("fastLearner", 0)).toBe(150);
   });
 
   it("describes each effect in plain words", () => {
@@ -229,8 +229,8 @@ describe("fever meter", () => {
     expect(applyMachineResult(charged(4), 70).fever).toEqual(charged(4));
   });
 
-  it("starts Overdrive on the eighth charge and empties the meter", () => {
-    const step = applyMachineResult(charged(7), 100);
+  it("starts Overdrive on the twelfth charge and empties the meter", () => {
+    const step = applyMachineResult(charged(11), 100);
     expect(step).toEqual({ fever: { charge: 0, ordersLeft: 3 }, activated: true });
     expect(isOverdrive(step.fever)).toBe(true);
   });
@@ -253,7 +253,7 @@ describe("fever meter", () => {
   });
 
   it("clamps a stored meter to its limits", () => {
-    expect(clampFever({ charge: 99, ordersLeft: 0 })).toEqual(charged(7));
+    expect(clampFever({ charge: 99, ordersLeft: 0 })).toEqual(charged(11));
     expect(clampFever({ charge: 5, ordersLeft: 40 })).toEqual({ charge: 0, ordersLeft: 3 });
   });
 });

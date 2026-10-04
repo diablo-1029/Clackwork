@@ -218,7 +218,7 @@ describe("production run", () => {
   });
 
   it("levels up, unlocks content and queues the new product as the next order", () => {
-    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 2, xp: 250 });
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 2, xp: 270 });
     createOrder();
     run().dispatch("INTRO_DONE");
     playMachine(100);
@@ -254,8 +254,8 @@ describe("production run", () => {
 
 describe("ceramic coaster", () => {
   it("arrives as the next order at level 8 and runs through all four machines", () => {
-    // Just short of Level 8, which needs 492 XP from Level 7.
-    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 7, xp: 480 });
+    // Just short of Level 8, which needs 1,300 XP from Level 7.
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 7, xp: 1290 });
     useProgressionStore.getState().syncUnlocks(7);
     useProgressionStore.getState().setOnboarding("hasSeenGoldenIntro");
 
@@ -557,7 +557,7 @@ describe("order twists", () => {
 
 describe("level bonus", () => {
   it("pays the bonus once when a level is reached", () => {
-    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 5, xp: 320, coins: 0 });
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 5, xp: 885, coins: 0 });
     grantXp(10);
     expect(player().factoryLevel).toBe(6);
     expect(player().coins).toBe(150);
@@ -568,7 +568,7 @@ describe("level bonus", () => {
 
   it("pays for every level when several are gained at once", () => {
     usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 1, xp: 0, coins: 0 });
-    grantXp(70 + 115 + 5);
+    grantXp(70 + 275 + 5);
     expect(player().factoryLevel).toBe(3);
     // Level 2 pays 50 and Level 3 pays 75.
     expect(player().coins).toBe(125);
@@ -577,7 +577,7 @@ describe("level bonus", () => {
 
   it("pays a milestone bonus on every fifth level", () => {
     usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 9, xp: 0, coins: 0 });
-    grantXp(700);
+    grantXp(1710);
     expect(player().factoryLevel).toBe(10);
     expect(player().coins).toBe(750);
   });
@@ -734,7 +734,7 @@ describe("fever mode", () => {
   });
 
   it("fills on Perfects, then pays double on three orders and resets", () => {
-    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 3, fever: { charge: 6, ordersLeft: 0 } });
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 3, fever: { charge: 10, ordersLeft: 0 } });
 
     // The order that fills the meter is the first of the three.
     createOrder();

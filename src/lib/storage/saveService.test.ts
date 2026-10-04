@@ -87,15 +87,14 @@ describe("save service", () => {
     expect(migrateSave(older)?.unlocks.machines).toContain("assembler");
   });
 
-  it("keeps the level and clamps XP saved under an older, steeper curve", () => {
+  it("keeps the level and clamps XP that is more than the current curve allows", () => {
     const save = createFreshSave();
     save.player.factoryLevel = 8;
-    // Valid under the old curve (Level 8 needed 1,656 XP); the new one needs far less.
-    save.player.xp = 1500;
+    // More than Level 8 needs under any curve the game has shipped.
+    save.player.xp = 9000;
     const migrated = migrateSave(save)!;
     expect(migrated.player.factoryLevel).toBe(8);
     expect(migrated.player.xp).toBe(xpRequired(8) - 1);
-    expect(xpRequired(8)).toBeLessThan(700);
   });
 
   it("survives storage being unavailable or throwing", () => {

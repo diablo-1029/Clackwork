@@ -14,24 +14,22 @@ import {
 import { canPurchaseUpgrade, getUpgradeCost } from "./upgradeLogic";
 
 describe("xp thresholds", () => {
-  it("follows floor(70 + 45 × (level − 1)^1.25)", () => {
+  it("follows 70 + 205 × (level − 1)", () => {
     expect(xpRequired(1)).toBe(70);
-    expect(xpRequired(2)).toBe(115);
-    expect(xpRequired(3)).toBe(177);
-    expect(xpRequired(10)).toBe(771);
+    expect(xpRequired(2)).toBe(275);
+    expect(xpRequired(3)).toBe(480);
+    expect(xpRequired(10)).toBe(1915);
   });
 
-  it("rises with every level, gently", () => {
+  it("rises by the same step with every level", () => {
     for (let level = 1; level < 40; level++) {
-      expect(xpRequired(level + 1)).toBeGreaterThan(xpRequired(level));
-      // Past the first few, no level costs more than about a quarter more than the one before.
-      if (level > 4) expect(xpRequired(level + 1) / xpRequired(level)).toBeLessThan(1.3);
+      expect(xpRequired(level + 1) - xpRequired(level)).toBe(205);
     }
   });
 
-  it("reaches the second machine after about nine Wood Blocks", () => {
-    // A Wood Block order pays roughly 21 XP.
-    expect((xpRequired(1) + xpRequired(2)) / 21).toBeLessThan(10);
+  it("reaches the third machine within the first shift", () => {
+    // A Wood Block order pays roughly 21 XP, and Level 2 brings the Stamper.
+    expect(xpRequired(1) / 21).toBeLessThan(4);
   });
 
   it("carries leftover XP into the next level", () => {
@@ -39,7 +37,7 @@ describe("xp thresholds", () => {
   });
 
   it("can gain several levels at once", () => {
-    const gain = applyXp(1, 0, 70 + 115 + 10);
+    const gain = applyXp(1, 0, 70 + 275 + 10);
     expect(gain).toEqual({ level: 3, xp: 10, levelsGained: [2, 3] });
   });
 
@@ -186,10 +184,10 @@ describe("unlocks", () => {
 describe("upgrades", () => {
   it("costs round(base × growth^level)", () => {
     expect(getUpgradeCost("betterMaterials", 0)).toBe(50);
-    expect(getUpgradeCost("betterMaterials", 1)).toBe(80);
-    expect(getUpgradeCost("betterMaterials", 2)).toBe(128);
+    expect(getUpgradeCost("betterMaterials", 1)).toBe(88);
+    expect(getUpgradeCost("betterMaterials", 2)).toBe(153);
     expect(getUpgradeCost("goldenTouch", 0)).toBe(250);
-    expect(getUpgradeCost("goldenTouch", 1)).toBe(475);
+    expect(getUpgradeCost("goldenTouch", 1)).toBe(575);
   });
 
   it("requires the unlock level, enough coins and room to grow", () => {

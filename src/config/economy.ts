@@ -73,18 +73,18 @@ export const economy = {
    * The fever meter: `size` Perfects fill it, a result below `poorQuality` drains one,
    * and a full meter makes the next `orders` finished orders pay `coinMultiplier` times the coins.
    */
-  fever: { size: 8, orders: 3, coinMultiplier: 2, poorQuality: 70 },
+  fever: { size: 12, orders: 3, coinMultiplier: 2, poorQuality: 70 },
   xp: {
     machineBase: 2,
     qualityDivisor: 20,
     completionBase: 5,
     goldenBonus: 5,
   },
-  /** XP to leave a level: base + step × (level − 1)^exponent. Gentle, so unlocks keep coming. */
+  /** XP to leave a level: base + step × (level − 1)^exponent. Tuned with `npm run simulate`: Level 5 in about a quarter of an hour, Level 15 in about three. */
   level: {
     base: 70,
-    step: 45,
-    exponent: 1.25,
+    step: 205,
+    exponent: 1,
   },
   /** Coins paid on every level-up, so no level is ever empty-handed. */
   levelBonus: {
