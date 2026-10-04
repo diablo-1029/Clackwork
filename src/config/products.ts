@@ -17,7 +17,7 @@ export const products: Record<ProductId, ProductDefinition> = {
     id: "soapBar",
     name: "Soap Bar",
     description: "Smooth, soft, and satisfying to finish.",
-    unlockLevel: 3,
+    unlockLevel: 2,
     baseValue: 18,
     machineSequence: ["cutter", "stamper", "packager"],
     sequenceVariants: [

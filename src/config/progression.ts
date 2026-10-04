@@ -49,6 +49,15 @@ export const featureUnlocks: FeatureUnlock[] = [
   },
 ];
 
+/** The same phases during a shift: no introductions, and far less waiting between machines. */
+export const shiftPacing = {
+  machineEnterMs: 140,
+  machineResolveMs: 120,
+  resultFeedbackMs: 380,
+  machineExitMs: 160,
+  rewardSummaryMs: 320,
+} as const;
+
 export const pacing = {
   /** Reward summaries auto-advance once the player has finished this many products. */
   autoAdvanceAfterProducts: 3,

@@ -94,8 +94,17 @@ export const SaveSchemaV1 = z.object({
       twistsWon: count,
       overdrives: count,
       products: z.partialRecord(productId, z.object({ made: count, bestQuality: z.number().min(0).max(100) })),
+      // Added with shifts.
+      bestShift: z.object({ score: count, products: count }).default({ score: 0, products: 0 }),
     })
-    .default({ bestStreak: 0, goldenMade: 0, twistsWon: 0, overdrives: 0, products: {} }),
+    .default({
+      bestStreak: 0,
+      goldenMade: 0,
+      twistsWon: 0,
+      overdrives: 0,
+      products: {},
+      bestShift: { score: 0, products: 0 },
+    }),
 
   meta: z.object({
     createdAt: z.string(),

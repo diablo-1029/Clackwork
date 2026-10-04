@@ -8,6 +8,8 @@ export interface FactoryStats {
   twistsWon: number;
   overdrives: number;
   products: Partial<Record<ProductId, ProductStat>>;
+  /** The best shift so far, by score. */
+  bestShift: { score: number; products: number };
 }
 
 export interface ProductStat {
@@ -15,7 +17,14 @@ export interface ProductStat {
   bestQuality: number;
 }
 
-export const emptyStats: FactoryStats = { bestStreak: 0, goldenMade: 0, twistsWon: 0, overdrives: 0, products: {} };
+export const emptyStats: FactoryStats = {
+  bestStreak: 0,
+  goldenMade: 0,
+  twistsWon: 0,
+  overdrives: 0,
+  products: {},
+  bestShift: { score: 0, products: 0 },
+};
 
 /** Everything an achievement can look at. */
 export interface AchievementContext {
@@ -80,6 +89,14 @@ export const achievements: AchievementDefinition[] = [
     [5, 10, 15],
     [40, 120, 300],
     (context) => context.stats.bestStreak,
+  ),
+  ...tiers(
+    "shift",
+    ["Clocked In", "Overtime", "Employee of the Month"],
+    (target) => `Score ${target.toLocaleString("en-US")} in one shift.`,
+    [1500, 4000, 8000],
+    [60, 200, 500],
+    (context) => context.stats.bestShift.score,
   ),
   {
     id: "golden1",

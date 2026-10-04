@@ -13,7 +13,13 @@ const tierStyle: Record<QualityTier, string> = {
   low: "bg-surface-2 text-muted",
 };
 
-export function ResultFeedback({ feedback }: { feedback: MachineFeedback }) {
+interface ResultFeedbackProps {
+  feedback: MachineFeedback;
+  /** During a shift: what this result did to the clock, in ms. */
+  timeDeltaMs?: number;
+}
+
+export function ResultFeedback({ feedback, timeDeltaMs }: ResultFeedbackProps) {
   const band = getQualityBand(feedback.quality);
   const perfect = band.tier === "perfect";
 
@@ -33,7 +39,14 @@ export function ResultFeedback({ feedback }: { feedback: MachineFeedback }) {
         {perfect && <span className="sf-shine pointer-events-none absolute inset-0" aria-hidden />}
       </span>
       <span className="flex flex-col text-left text-sm leading-tight font-black">
-        <span>+{feedback.xp} XP</span>
+        {timeDeltaMs ? (
+          <span className={timeDeltaMs > 0 ? "text-success" : "text-orange"}>
+            {timeDeltaMs > 0 ? "+" : "−"}
+            {(Math.abs(timeDeltaMs) / 1000).toFixed(1)}s
+          </span>
+        ) : (
+          <span>+{feedback.xp} XP</span>
+        )}
         {perfect && feedback.streak >= 2 && <span className="text-orange">PERFECT x{feedback.streak}</span>}
         {feedback.shielded && <span className="text-brand-deep">Shield kept x{feedback.streak}</span>}
       </span>

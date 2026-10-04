@@ -8,13 +8,14 @@ import { Chip, Panel } from "@/components/ui/Chunky";
 import { Icon } from "@/components/ui/Icon";
 import { productList } from "@/config/products";
 import { finishedLook } from "@/game/products/productLook";
+import { startShift } from "@/game/core/runActions";
 import { ProductIcon } from "@/game/products/ProductRenderer";
 import { describeGoal } from "@/game/progression/goals";
 import { getNextUnlock, isFeatureUnlocked, isProductPlayable } from "@/game/progression/unlocks";
 import { useGoalsStore } from "@/stores/goalsStore";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useProgressionStore } from "@/stores/progressionStore";
-import { useUiStore } from "@/stores/uiStore";
+import { useUiStore, type PlayMode } from "@/stores/uiStore";
 
 function Stat({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
   return (
@@ -38,15 +39,19 @@ export function StartScreen() {
   const returning = useProgressionStore((s) => s.onboarding.hasStarted);
   const setOnboarding = useProgressionStore((s) => s.setOnboarding);
   const startSession = useUiStore((s) => s.startSession);
+  const setMode = useUiStore((s) => s.setMode);
+  const bestShift = useGoalsStore((s) => s.stats.bestShift.score);
   const nextUnlock = getNextUnlock(level);
   const goals = useGoalsStore((s) => s.goals.items);
   const showGoals = isFeatureUnlocked("goals", level) && goals.length > 0;
   const lineup = productList.filter(isProductPlayable);
 
-  const start = () => {
+  const start = (mode: PlayMode) => {
     audio.unlock();
     audio.play("uiClick");
     setOnboarding("hasStarted");
+    if (mode === "shift") startShift();
+    else setMode("free");
     startSession();
   };
 
@@ -132,10 +137,19 @@ export function StartScreen() {
           </div>
         )}
 
-        <p className="text-base font-extrabold">{returning ? "Your next order is ready." : "Your first order is ready."}</p>
+        <p className="text-base font-extrabold">
+          {bestShift > 0
+            ? `Best shift: ${bestShift.toLocaleString("en-US")}. Can you beat it?`
+            : returning
+              ? "Beat the clock: make as many as you can."
+              : "Your first shift is a warm-up. Take your time."}
+        </p>
 
-        <Button silent onClick={start} className="w-full text-lg">
-          {returning ? "Continue Production" : "Start Production"}
+        <Button silent onClick={() => start("shift")} className="w-full text-lg">
+          Start Shift
+        </Button>
+        <Button silent variant="ghost" onClick={() => start("free")} className="-mt-1 min-h-11 w-full">
+          Free play
         </Button>
       </Panel>
     </div>

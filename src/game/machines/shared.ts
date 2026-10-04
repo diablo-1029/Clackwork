@@ -28,6 +28,8 @@ export interface MachineProps {
   step: number;
   /** Which way the machine plays this time; see machines/variants.ts. */
   variant: string;
+  /** Speed of the machine's moving part, 1 being normal. Shifts raise it as they go on. */
+  tempo?: number;
   /** Input is accepted only while true. */
   active: boolean;
   /** Show the extra first-time hint animation. */

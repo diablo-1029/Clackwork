@@ -32,6 +32,8 @@ interface RewardSummaryCardProps {
   /** When given, the cards replace the button: picking one starts the next order. */
   offers?: OrderOffer[];
   onPick?: (offer: OrderOffer) => void;
+  /** Back to the start screen, where a shift can be started. */
+  onMenu?: () => void;
 }
 
 /** One to three stars, from the same quality bands that set the coin multiplier. */
@@ -48,7 +50,14 @@ function twistOutcome(twist: NonNullable<RewardSummary["twist"]>): string {
   return twist.achieved ? `${name} bonus earned` : `${name} missed`;
 }
 
-export function RewardSummaryCard({ reward, onNext, nextLabel = "Next Order", offers, onPick }: RewardSummaryCardProps) {
+export function RewardSummaryCard({
+  reward,
+  onNext,
+  nextLabel = "Next Order",
+  offers,
+  onPick,
+  onMenu,
+}: RewardSummaryCardProps) {
   const product = products[reward.productId];
   const level = usePlayerStore((s) => s.factoryLevel);
   const xp = usePlayerStore((s) => s.xp);
@@ -186,6 +195,11 @@ export function RewardSummaryCard({ reward, onNext, nextLabel = "Next Order", of
           <Button onClick={onNext} className="mt-1 w-full">
             {nextLabel}
           </Button>
+        )}
+        {onMenu && (
+          <button type="button" onClick={onMenu} className="min-h-9 text-xs font-black text-muted underline">
+            Back to menu
+          </button>
         )}
       </motion.div>
     </div>

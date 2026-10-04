@@ -1,7 +1,7 @@
 import { upgradeList, zeroUpgradeLevels } from "@/config/upgrades";
 import { machinesUnlockedAt, productsUnlockedAt } from "@/game/progression/unlocks";
 import { clampFever, emptyFever } from "@/game/economy/fever";
-import { achievements } from "@/game/progression/achievements";
+import { achievements, emptyStats } from "@/game/progression/achievements";
 import { xpRequired } from "@/game/progression/levels";
 import { SaveEnvelopeSchema, SaveSchemaV1 } from "@/lib/validation/saveSchema";
 import type { SaveDataCurrent, SaveDataV1 } from "@/types/save";
@@ -86,7 +86,7 @@ export function createFreshSave(now: Date = new Date()): SaveDataCurrent {
     },
     goals: { date: "", items: [], bonusPaid: false },
     achievements: [],
-    stats: { bestStreak: 0, goldenMade: 0, twistsWon: 0, overdrives: 0, products: {} },
+    stats: { ...emptyStats, products: {}, bestShift: { ...emptyStats.bestShift } },
     meta: { createdAt: timestamp, updatedAt: timestamp },
   };
 }

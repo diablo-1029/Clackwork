@@ -33,12 +33,17 @@ export function StamperMachine({
   richness,
   look,
   variant,
+  tempo = 1,
   active,
   onInteractionStart,
   onComplete,
   burst,
 }: MachineProps) {
-  const [plan] = useState(() => stampPlan(variant, runId));
+  const [plan] = useState(() => {
+    const base = stampPlan(variant, runId);
+    // A faster shift sweeps the marker faster.
+    return { ...base, periodMs: base.periodMs / Math.max(1, tempo) };
+  });
   const [presses, setPresses] = useState<Press[]>([]);
   const markerRef = useRef<SVGGElement>(null);
   const elapsed = useRef(0);

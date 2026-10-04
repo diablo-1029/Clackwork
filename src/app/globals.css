@@ -144,6 +144,15 @@ button:disabled {
   animation: none;
 }
 
+/* The shift clock in its last seconds. */
+.sf-clock-low {
+  animation: sf-pulse 0.5s ease-in-out infinite;
+}
+
+[data-reduced-motion="true"] .sf-clock-low {
+  animation: none;
+}
+
 /* A single ring pulse around the stage on a Perfect result. */
 .sf-stage-perfect::after {
   content: "";

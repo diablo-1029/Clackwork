@@ -30,6 +30,41 @@ export const economy = {
   /** A non-perfect result at or above this only costs one streak step. */
   streakKeepThreshold: 70,
   goldenMultiplier: 5,
+  /**
+   * Shifts: a run against the clock. A result wins back a share of the machine's normal
+   * length (`refund`, best band first) or, below `poorQuality`, costs `poorPenalty` of it
+   * (at least `minPenaltyMs`). What is won back is multiplied by `refundDecay` for every
+   * product finished, down to `refundFloor`, so every shift ends. Set every `factor` to 0
+   * for a fixed-length shift.
+   */
+  shift: {
+    startMs: 30_000,
+    maxMs: 45_000,
+    /** The clock turns urgent below this. */
+    lowMs: 5_000,
+    /** After time runs out, how long the machine in progress may still be finished. */
+    buzzerMs: 4_000,
+    refund: [
+      { min: 100, factor: 0.6 },
+      { min: 95, factor: 0.45 },
+      { min: 85, factor: 0.3 },
+      { min: 70, factor: 0.15 },
+    ],
+    poorQuality: 70,
+    poorPenalty: 0.5,
+    minPenaltyMs: 1_500,
+    refundDecay: 0.9,
+    refundFloor: 0.25,
+    /** Score: each Perfect in a row adds `comboStep` to the multiplier, up to `comboMax`. */
+    comboStep: 0.1,
+    comboMax: 3,
+    productBonus: 50,
+    /** A harder variant of each machine joins the rotation every this many products. */
+    productsPerVariant: 2,
+    /** Machines with a moving part speed up by this much per product, up to `tempoMax`. */
+    tempoPerProduct: 0.06,
+    tempoMax: 1.8,
+  },
   /** Daily goals: how many a day, what each pays (base + perLevel × Factory Level), and the all-done bonus. */
   goals: { perDay: 3, base: 30, perLevel: 12, bonusFactor: 2 },
   /** Orders of one product needed for two and three mastery stars (three also needs a 100% order). */

@@ -30,7 +30,7 @@ export const machines: Record<MachineId, MachineDefinition> = {
     name: "Stamper",
     description: "Presses a crisp logo into the product.",
     instruction: "Tap at the center.",
-    unlockLevel: 3,
+    unlockLevel: 2,
     estimatedDurationSeconds: 3,
     baseDifficulty: 2,
     icon: "stamper",

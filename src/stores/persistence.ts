@@ -12,6 +12,7 @@ import { usePlayerStore } from "./playerStore";
 import { useProgressionStore } from "./progressionStore";
 import { useRunStore } from "./runStore";
 import { useSettingsStore } from "./settingsStore";
+import { useShiftStore } from "./shiftStore";
 import { useUiStore } from "./uiStore";
 
 let createdAt = new Date().toISOString();
@@ -110,6 +111,7 @@ export function initPersistence(): LoadStatus {
 export function resetGame(): void {
   clearSave();
   useRunStore.getState().clear();
+  useShiftStore.getState().reset();
   useUiStore.getState().reset();
   hydrateStores(createFreshSave());
 }

@@ -178,4 +178,16 @@ describe("save service", () => {
     expect(loaded.achievements).toEqual(["made10"]);
     expect(loaded.stats.products.woodBlock).toEqual({ made: 12, bestQuality: 100 });
   });
+
+  it("loads a save from before shifts existed with no best shift, and round-trips one", () => {
+    const older = JSON.parse(JSON.stringify(createFreshSave()));
+    delete older.stats.bestShift;
+    expect(migrateSave(older)?.stats.bestShift).toEqual({ score: 0, products: 0 });
+
+    const storage = fakeStorage();
+    const save = createFreshSave();
+    save.stats.bestShift = { score: 2_340, products: 7 };
+    writeSave(save, storage);
+    expect(loadSave(storage).data.stats.bestShift).toEqual({ score: 2_340, products: 7 });
+  });
 });

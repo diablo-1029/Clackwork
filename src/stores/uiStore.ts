@@ -2,6 +2,9 @@ import { writeDebugAccess } from "@/lib/debugAccess";
 import { create } from "zustand";
 import type { OrderOffer, ProductId } from "@/types/game";
 
+/** How the factory is being played: against the clock, or untimed with the order board. */
+export type PlayMode = "shift" | "free";
+
 export type Screen = "factory" | "goals" | "products" | "upgrades" | "themes" | "settings";
 
 interface UiState {
@@ -9,6 +12,7 @@ interface UiState {
   hydrated: boolean;
   /** True once the player has pressed Start this session (also unlocks audio). */
   sessionStarted: boolean;
+  mode: PlayMode;
   screen: Screen;
   /** Levels reached but not yet celebrated; shown as one grouped panel. */
   pendingLevelUps: number[];
@@ -31,6 +35,9 @@ interface UiState {
 
   setHydrated: () => void;
   startSession: () => void;
+  /** Back to the start screen, keeping whatever is on the floor. */
+  endSession: () => void;
+  setMode: (mode: PlayMode) => void;
   setScreen: (screen: Screen) => void;
   queueLevelUps: (levels: number[]) => void;
   clearLevelUps: () => void;
@@ -51,6 +58,7 @@ let toastId = 0;
 export const useUiStore = create<UiState>()((set, get) => ({
   hydrated: false,
   sessionStarted: false,
+  mode: "shift",
   screen: "factory",
   pendingLevelUps: [],
   queuedProducts: [],
@@ -62,6 +70,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
 
   setHydrated: () => set({ hydrated: true }),
   startSession: () => set({ sessionStarted: true }),
+  endSession: () => set({ sessionStarted: false }),
+  setMode: (mode) => set({ mode }),
   setScreen: (screen) => set({ screen }),
   queueLevelUps: (levels) => set((s) => ({ pendingLevelUps: [...s.pendingLevelUps, ...levels] })),
   clearLevelUps: () => set({ pendingLevelUps: [] }),
@@ -83,6 +93,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   reset: () =>
     set({
       sessionStarted: false,
+      mode: "shift",
       screen: "factory",
       pendingLevelUps: [],
       queuedProducts: [],

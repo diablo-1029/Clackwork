@@ -49,9 +49,15 @@ export function achievementContext(): AchievementContext {
 /** What a play event adds to the lifetime stats. */
 export type ProgressEvent =
   | { type: "machine"; perfect: boolean; streak: number; overdriveStarted: boolean }
-  | { type: "order"; productId: ProductId; quality: number; coins: number; isGolden: boolean; twistWon: boolean };
+  | { type: "order"; productId: ProductId; quality: number; coins: number; isGolden: boolean; twistWon: boolean }
+  | { type: "shift"; score: number; products: number };
 
 function statsAfter(stats: FactoryStats, event: ProgressEvent): FactoryStats {
+  if (event.type === "shift") {
+    return event.score > stats.bestShift.score
+      ? { ...stats, bestShift: { score: event.score, products: event.products } }
+      : stats;
+  }
   if (event.type === "machine") {
     return {
       ...stats,
@@ -82,11 +88,14 @@ export function recordProgress(event: ProgressEvent, now: Date = new Date()): vo
 
   refreshGoals(now);
   const current = useGoalsStore.getState().goals;
-  const goalEvent: GoalEvent =
+  const goalEvent: GoalEvent | null =
     event.type === "machine"
       ? { type: "machine", perfect: event.perfect, streak: event.streak }
-      : { type: "order", productId: event.productId, coins: event.coins, twistWon: event.twistWon };
-  const step = applyGoalEvent(current.items, goalEvent);
+      : event.type === "order"
+        ? { type: "order", productId: event.productId, coins: event.coins, twistWon: event.twistWon }
+        : null;
+  // The end of a shift only matters to stats and achievements.
+  const step = goalEvent ? applyGoalEvent(current.items, goalEvent) : { goals: current.items, completed: [] };
 
   for (const goal of step.completed) {
     coins += goal.reward;

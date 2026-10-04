@@ -62,18 +62,17 @@ describe("unlocks", () => {
     expect(productsUnlockedAt(1)).toEqual(["woodBlock"]);
   });
 
-  it("unlocks the Stamper and Soap Bar at level 3", () => {
-    expect(machinesUnlockedAt(3)).toContain("stamper");
-    expect(productsUnlockedAt(3)).toContain("soapBar");
-    // The order board arrives with the second product, when there is first something to choose.
-    expect(getUnlocksAtLevel(3).map((u) => u.id).sort()).toEqual([
-      "fever",
-      "orderBoard",
-      "packager:down",
-      "soapBar",
-      "stamper",
-      "steadyHands",
-    ]);
+  it("unlocks the Stamper and Soap Bar at level 2, so a new player soon has a third machine", () => {
+    expect(machinesUnlockedAt(1)).not.toContain("stamper");
+    expect(machinesUnlockedAt(2)).toContain("stamper");
+    expect(productsUnlockedAt(2)).toContain("soapBar");
+    expect(getUnlocksAtLevel(2).map((u) => u.id)).toEqual(
+      expect.arrayContaining(["betterMaterials", "goals", "soapBar", "stamper"]),
+    );
+  });
+
+  it("opens the order board, the fever meter and more at level 3", () => {
+    expect(getUnlocksAtLevel(3).map((u) => u.id).sort()).toEqual(["fever", "orderBoard", "packager:down", "steadyHands"]);
   });
 
   it("unlocks the Polisher and Golden Touch at level 5", () => {

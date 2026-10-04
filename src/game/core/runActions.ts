@@ -1,3 +1,4 @@
+import { machines } from "@/config/machines";
 import { products } from "@/config/products";
 import { pacing } from "@/config/progression";
 import { applyMachineResult, finishOrder, isOverdrive } from "@/game/economy/fever";
@@ -7,13 +8,16 @@ import { resolveMachineSequence } from "@/game/progression/unlocks";
 import { devLog, track } from "@/lib/analytics";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useProgressionStore } from "@/stores/progressionStore";
+import { useGoalsStore } from "@/stores/goalsStore";
 import { useRunStore } from "@/stores/runStore";
+import { useShiftStore } from "@/stores/shiftStore";
 import { useUiStore } from "@/stores/uiStore";
 import { isFeatureUnlocked } from "@/game/progression/unlocks";
 import type { OrderOffer, OrderTwist, ProductionRun, RewardSummary } from "@/types/game";
 import { recordProgress } from "./goalActions";
 import { generateOffers, pickProduct, rollGolden } from "./orders";
 import { resolveMachineReward, resolveProductReward } from "./RewardResolver";
+import { applyShiftProduct, applyShiftResult, newShift, summarise, type ShiftSummary } from "./shift";
 
 /**
  * The run controller's non-visual half: every change to coins, XP, streak and
@@ -232,6 +236,10 @@ export function completeMachine(outcome: MachineOutcome): boolean {
       shielded: reward.shieldUsed,
       overdriveStarted: fever.activated,
     });
+  // During a shift the result also scores and moves the clock. Outside one this does nothing.
+  useShiftStore
+    .getState()
+    .update((shift) => applyShiftResult(shift, quality, machines[machineId]?.estimatedDurationSeconds ?? 3));
   recordProgress({
     type: "machine",
     perfect: reward.isPerfect,
@@ -293,6 +301,7 @@ export function finishProduct(): RewardSummary | null {
 
   runStore.setLastReward(summary);
   runStore.dispatch("REWARD_RESOLVED");
+  useShiftStore.getState().update((shift) => applyShiftProduct(shift, summary.coins, summary.xp));
   recordProgress({
     type: "order",
     productId: run.productId,
@@ -308,5 +317,34 @@ export function finishProduct(): RewardSummary | null {
     isGolden: run.isGolden,
   });
   devLog("Reward", `coins=${summary.coins} xp=${summary.xp}`);
+  return summary;
+}
+
+/** Starts a shift: a clean floor, a full clock and the first product on the belt. */
+export function startShift(): void {
+  useRunStore.getState().clear();
+  const ui = useUiStore.getState();
+  ui.setMode("shift");
+  ui.setOffers([]);
+  const shifts = useShiftStore.getState();
+  shifts.setSummary(null);
+  // A player's very first shift is a warm-up: the clock waits for one finished product.
+  shifts.setShift(newShift(usePlayerStore.getState().totalProductsCompleted === 0));
+  createOrder();
+}
+
+/** Ends the shift in progress, records a new best and leaves the summary to show. Safe to call twice. */
+export function endShift(): ShiftSummary | null {
+  const shifts = useShiftStore.getState();
+  const shift = shifts.shift;
+  if (!shift) return null;
+
+  const summary = summarise(shift, useGoalsStore.getState().stats.bestShift.score);
+  shifts.setShift(null);
+  shifts.setSummary(summary);
+  // A product left unfinished on the belt is dropped; its machines have already scored.
+  useRunStore.getState().clear();
+  recordProgress({ type: "shift", score: summary.score, products: summary.products });
+  devLog("Shift", `score=${summary.score} products=${summary.products}`);
   return summary;
 }

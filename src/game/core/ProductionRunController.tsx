@@ -1,29 +1,32 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { audio } from "@/audio/audioManager";
 import { OrderValueChip } from "@/components/counters/OrderValueChip";
+import { ShiftHud } from "@/components/counters/ShiftHud";
 import { ResultFeedback } from "@/components/feedback/ResultFeedback";
 import { LevelUpOverlay } from "@/components/overlays/LevelUpOverlay";
 import { OrderBoard } from "@/components/overlays/OrderBoard";
 import { OrderIntro } from "@/components/overlays/OrderIntro";
 import { RewardSummaryCard } from "@/components/overlays/RewardSummaryCard";
+import { ShiftSummary } from "@/components/overlays/ShiftSummary";
 import { Ribbon } from "@/components/ui/Chunky";
 import { isOverdrive } from "@/game/economy/fever";
 import { economy } from "@/config/economy";
 import { Icon } from "@/components/ui/Icon";
 import { machines } from "@/config/machines";
 import { products } from "@/config/products";
-import { pacing } from "@/config/progression";
+import { pacing, shiftPacing } from "@/config/progression";
 import { upgrades } from "@/config/upgrades";
 import { getQualityBand } from "@/game/economy/multipliers";
 import type { MachineCompletion } from "@/game/machines/shared";
-import { machineVariants, pickVariant } from "@/game/machines/variants";
+import { machineVariants, pickShiftVariant, pickVariant } from "@/game/machines/variants";
 import { deriveProductLook } from "@/game/products/productLook";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useProgressionStore } from "@/stores/progressionStore";
 import { useRunStore } from "@/stores/runStore";
+import { useShiftStore } from "@/stores/shiftStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { QualityTier, SoundKey } from "@/types/game";
 import { MachineStage } from "./MachineStage";
@@ -33,7 +36,17 @@ import { isFeatureUnlocked } from "@/game/progression/unlocks";
 import type { OrderOffer } from "@/types/game";
 import { describeTwist } from "./orders";
 import { projectOrderValue } from "./RewardResolver";
-import { completeMachine, createOrder, ensureOffers, exitMachine, finishProduct, isOrderBoardUnlocked } from "./runActions";
+import {
+  completeMachine,
+  createOrder,
+  endShift,
+  ensureOffers,
+  exitMachine,
+  finishProduct,
+  isOrderBoardUnlocked,
+  startShift,
+} from "./runActions";
+import { shiftDifficulty, startClock, tickShift } from "./shift";
 import { MACHINE_PHASES } from "./runStateMachine";
 
 const tierSound: Record<QualityTier, SoundKey | null> = {
@@ -60,6 +73,16 @@ export function ProductionRunController() {
   const showToast = useUiStore((s) => s.showToast);
   const forcedVariant = useUiStore((s) => s.debug.variantIndex);
   const offers = useUiStore((s) => s.offers);
+  const mode = useUiStore((s) => s.mode);
+  const setMode = useUiStore((s) => s.setMode);
+  const endSession = useUiStore((s) => s.endSession);
+  const shift = useShiftStore((s) => s.shift);
+  const shiftSummary = useShiftStore((s) => s.summary);
+  // A shift runs products back to back against the clock; free play is the untimed game.
+  const inShift = mode === "shift";
+  const shiftExpired = Boolean(shift?.expired);
+  /** When the clock ran out, so the buzzer-beater allowance is measured from that moment. */
+  const expiredAt = useRef<number | null>(null);
 
   const productsCompleted = usePlayerStore((s) => s.totalProductsCompleted);
   const factoryLevel = usePlayerStore((s) => s.factoryLevel);
@@ -86,15 +109,29 @@ export function ProductionRunController() {
 
   // Before the board unlocks there is always an order on the floor.
   useEffect(() => {
-    if (!run && !boardUnlocked) createOrder();
-  }, [run, boardUnlocked]);
+    if (!inShift && !run && !boardUnlocked) createOrder();
+  }, [inShift, run, boardUnlocked]);
 
   // With the board, deal cards whenever an order is needed. Level-ups are
   // celebrated first, so a product unlocked just now can be on the board.
   const awaitingChoice = !run || phase === "REWARD_SUMMARY";
   useEffect(() => {
-    if (boardUnlocked && awaitingChoice && !celebrating && pendingLevelUps.length === 0) ensureOffers();
-  }, [boardUnlocked, awaitingChoice, celebrating, pendingLevelUps.length, runId]);
+    if (!inShift && boardUnlocked && awaitingChoice && !celebrating && pendingLevelUps.length === 0) ensureOffers();
+  }, [inShift, boardUnlocked, awaitingChoice, celebrating, pendingLevelUps.length, runId]);
+
+  // The shift clock. It only runs while the factory screen is open and the tab is visible.
+  const clockRunning = inShift && Boolean(shift?.started) && !shiftExpired;
+  useEffect(() => {
+    if (!clockRunning) return;
+    let last = performance.now();
+    const timer = window.setInterval(() => {
+      const now = performance.now();
+      // The clamp stops the clock jumping when a hidden tab comes back.
+      if (!document.hidden) useShiftStore.getState().update((s) => tickShift(s, Math.min(250, now - last)));
+      last = now;
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [clockRunning]);
 
   /** Leaves the reward summary: celebrate pending level-ups first, then the next order. */
   const advance = useCallback(() => {
@@ -133,6 +170,39 @@ export function ProductionRunController() {
       return () => window.clearTimeout(timer);
     };
 
+    if (inShift) {
+      if (!shiftExpired) expiredAt.current = null;
+      else if (expiredAt.current === null) expiredAt.current = Date.now();
+
+      // Out of time: the machine in hand may be finished, but nothing new starts.
+      switch (phase) {
+        case "ORDER_INTRO":
+          return shiftExpired ? after(0, endShift) : after(0, () => dispatch("INTRO_DONE"));
+        case "MACHINE_ENTER":
+          return shiftExpired ? after(0, endShift) : after(shiftPacing.machineEnterMs, () => dispatch("ENTER_DONE"));
+        case "MACHINE_READY":
+        case "PLAYER_INTERACTION":
+          if (!shiftExpired) return;
+          return after(Math.max(0, economy.shift.buzzerMs - (Date.now() - (expiredAt.current ?? Date.now()))), endShift);
+        case "MACHINE_RESOLVE":
+          return after(shiftPacing.machineResolveMs, () => dispatch("SCORE_COMMITTED"));
+        case "RESULT_FEEDBACK":
+          return after(shiftPacing.resultFeedbackMs, () => dispatch("CONTINUE"));
+        case "MACHINE_EXIT":
+          return after(shiftPacing.machineExitMs, exitMachine);
+        case "PRODUCT_COMPLETE":
+          finishProduct();
+          return;
+        case "REWARD_SUMMARY":
+          // Straight on to the next product, or to the summary if that was the last.
+          return after(shiftPacing.rewardSummaryMs, () => {
+            if (useShiftStore.getState().shift?.expired) endShift();
+            else createOrder();
+          });
+      }
+      return;
+    }
+
     switch (phase) {
       case "ORDER_INTRO":
         // An order picked from the board needs no introduction.
@@ -156,7 +226,20 @@ export function ProductionRunController() {
         if (autoAdvance && !celebrating && !boardUnlocked) return after(pacing.rewardSummaryMs, advance);
         return;
     }
-  }, [runId, machineIndex, phase, firstOrder, isGolden, autoAdvance, celebrating, boardUnlocked, dispatch, advance]);
+  }, [
+    runId,
+    machineIndex,
+    phase,
+    firstOrder,
+    isGolden,
+    autoAdvance,
+    celebrating,
+    boardUnlocked,
+    inShift,
+    shiftExpired,
+    dispatch,
+    advance,
+  ]);
 
   // A Golden order announces itself.
   useEffect(() => {
@@ -171,9 +254,48 @@ export function ProductionRunController() {
         className="sf-raised w-full max-w-md rounded-3xl p-4 text-ink sm:p-5"
       >
         <OrderBoard offers={offers} onPick={pickOffer} />
+        <button
+          type="button"
+          onClick={endSession}
+          className="mx-auto mt-1 block min-h-9 text-xs font-black text-muted underline"
+        >
+          Back to menu
+        </button>
       </motion.div>
     </div>
   );
+
+  if (inShift && (!run || !phase)) {
+    // Between shifts: the summary, then any level-ups it earned, then straight back in.
+    if (!shiftSummary) return null;
+    return (
+      <div className="sf-stage relative h-full overflow-hidden rounded-3xl">
+        <FactoryBackdrop />
+        <ShiftSummary
+          summary={shiftSummary}
+          levelUpsPending={pendingLevelUps.length > 0}
+          onContinue={() => {
+            setCelebrating(true);
+            audio.play("levelUp");
+          }}
+          onPlayAgain={startShift}
+          onFreePlay={() => {
+            useShiftStore.getState().reset();
+            setMode("free");
+          }}
+        />
+        {celebrating && (
+          <LevelUpOverlay
+            levels={pendingLevelUps}
+            onContinue={() => {
+              clearLevelUps();
+              setCelebrating(false);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   if (!run || !phase) {
     // No order yet this session: with the board unlocked, the player picks the first one.
@@ -215,6 +337,8 @@ export function ProductionRunController() {
   const levelUpsPending = pendingLevelUps.length > 0;
 
   const handleComplete = (completion: MachineCompletion) => {
+    // A machine finished in a single tap is also the player's first move.
+    useShiftStore.getState().update(startClock);
     if (!completeMachine(completion)) return;
 
     const committed = useRunStore.getState().feedback;
@@ -237,14 +361,18 @@ export function ProductionRunController() {
     (machineId === "packager" && !onboarding.hasCompletedFirstPackage);
   // How the machine plays this time. A machine keeps the variant it was mounted with.
   const variants = machineVariants[machineId];
+  const difficulty = shiftDifficulty(shift?.products ?? 0);
   const variant =
-    forcedVariant === null
-      ? pickVariant(machineId, run.id, run.currentMachineIndex, factoryLevel, showHint)
-      : variants[Math.min(forcedVariant, variants.length - 1)];
+    forcedVariant !== null
+      ? variants[Math.min(forcedVariant, variants.length - 1)]
+      : inShift
+        ? pickShiftVariant(machineId, run.id, run.currentMachineIndex, factoryLevel, difficulty.variantCount, showHint)
+        : pickVariant(machineId, run.id, run.currentMachineIndex, factoryLevel, showHint);
   const instruction = product.stepHints?.[run.currentMachineIndex] ?? variant.instruction ?? machine.instruction;
 
   return (
     <div className="flex h-full flex-col gap-2">
+      {inShift && shift && <ShiftHud shift={shift} />}
       <ProductionProgress run={run} phase={phase} />
 
       <div
@@ -304,10 +432,15 @@ export function ProductionRunController() {
                 look={look}
                 factoryLevel={factoryLevel}
                 variant={variant.id}
+                tempo={inShift ? difficulty.tempo : 1}
                 step={run.machineSequence.slice(0, run.currentMachineIndex).filter((id) => id === machineId).length}
                 active={interactive}
                 showHint={showHint}
-                onInteractionStart={() => dispatch("INTERACTION_START")}
+                onInteractionStart={() => {
+                  // The shift clock starts on the player's first move.
+                  useShiftStore.getState().update(startClock);
+                  dispatch("INTERACTION_START");
+                }}
                 onInteractionCancel={() => dispatch("INTERACTION_CANCEL")}
                 onComplete={handleComplete}
               />
@@ -319,7 +452,11 @@ export function ProductionRunController() {
         <div className="absolute inset-x-0 bottom-1.5 flex h-[4.25rem] items-center justify-center px-2 text-center">
           {showingResult ? (
             <div className="sf-raised flex min-h-14 items-center rounded-2xl px-4 py-1 text-ink">
-              <ResultFeedback key={`${run.id}-${run.results.length}`} feedback={feedback} />
+              <ResultFeedback
+                key={`${run.id}-${run.results.length}`}
+                feedback={feedback}
+                timeDeltaMs={inShift ? shift?.lastDeltaMs : undefined}
+              />
             </div>
           ) : (
             machineVisible &&
@@ -335,9 +472,27 @@ export function ProductionRunController() {
           )}
         </div>
 
-        {phase === "ORDER_INTRO" && !boardUnlocked && <OrderIntro run={run} onSkip={() => dispatch("INTRO_DONE")} />}
+        {phase === "ORDER_INTRO" && !boardUnlocked && !inShift && (
+          <OrderIntro run={run} onSkip={() => dispatch("INTRO_DONE")} />
+        )}
 
-        {phase === "REWARD_SUMMARY" &&
+        {/* In a shift a finished product just pops its coins and the next one rolls in. */}
+        {inShift && phase === "REWARD_SUMMARY" && lastReward && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <motion.div
+              key={lastReward.runId}
+              initial={{ scale: 0.6, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: -10 }}
+              className="sf-raised flex items-center gap-2 rounded-2xl px-4 py-2 text-2xl font-black text-ink"
+              role="status"
+            >
+              <Icon name="coin" size={24} />+{lastReward.coins}
+            </motion.div>
+          </div>
+        )}
+
+        {!inShift &&
+          phase === "REWARD_SUMMARY" &&
           lastReward &&
           !celebrating &&
           (boardOnlyFor === run.id ? (
@@ -351,6 +506,7 @@ export function ProductionRunController() {
               // Level-ups are celebrated before the cards appear.
               offers={boardUnlocked && !levelUpsPending ? offers : undefined}
               onPick={pickOffer}
+              onMenu={boardUnlocked ? undefined : endSession}
             />
           ))}
 

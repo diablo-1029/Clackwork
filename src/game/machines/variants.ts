@@ -54,6 +54,25 @@ export const machineVariants: Record<MachineId, MachineVariant[]> = {
  * the same one), different between steps and runs, and always the basic one
  * while the player is still being taught the machine.
  */
+/**
+ * The same choice during a shift: only the first `variantCount` unlocked variants
+ * are in rotation, so a shift opens on the basics and gets trickier as it goes.
+ */
+export function pickShiftVariant(
+  machineId: MachineId,
+  runId: string,
+  stepIndex: number,
+  factoryLevel: number,
+  variantCount: number,
+  onboarding = false,
+): MachineVariant {
+  const all = machineVariants[machineId];
+  if (onboarding) return all[0];
+  const unlocked = all.filter((variant, index) => index === 0 || variant.minLevel <= factoryLevel);
+  const pool = unlocked.slice(0, Math.max(1, Math.floor(variantCount)));
+  return pool[hashString(`${runId}:${stepIndex}`) % pool.length] ?? all[0];
+}
+
 export function pickVariant(
   machineId: MachineId,
   runId: string,
