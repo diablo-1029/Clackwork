@@ -24,17 +24,17 @@ import {
 const running = () => startClock(newShift());
 
 describe("shift clock", () => {
-  it("starts at 30 seconds and waits for the first move", () => {
+  it("starts at 60 seconds and waits for the first move", () => {
     const shift = newShift();
-    expect(shift.timeLeftMs).toBe(30_000);
+    expect(shift.timeLeftMs).toBe(60_000);
     expect(tickShift(shift, 5_000)).toBe(shift);
-    expect(tickShift(startClock(shift), 5_000).timeLeftMs).toBe(25_000);
+    expect(tickShift(startClock(shift), 5_000).timeLeftMs).toBe(55_000);
   });
 
   it("holds a warm-up clock until the first product is finished", () => {
     const warmup = newShift(true);
     expect(startClock(warmup).started).toBe(false);
-    expect(applyShiftResult(warmup, 100, 3).timeLeftMs).toBe(30_000);
+    expect(applyShiftResult(warmup, 100, 3).timeLeftMs).toBe(60_000);
     expect(applyShiftProduct(applyShiftResult(warmup, 100, 3), 13, 21).started).toBe(true);
   });
 
@@ -66,10 +66,10 @@ describe("shift clock", () => {
     expect(refundMs(60, 3, 500)).toBe(-1_500);
   });
 
-  it("never holds more than 45 seconds", () => {
-    let shift = { ...running(), timeLeftMs: 44_500 };
+  it("never holds more than 90 seconds", () => {
+    let shift = { ...running(), timeLeftMs: 89_500 };
     shift = applyShiftResult(shift, 100, 9);
-    expect(shift.timeLeftMs).toBe(45_000);
+    expect(shift.timeLeftMs).toBe(90_000);
   });
 
   it("lets a buzzer-beater score without buying the shift back", () => {
@@ -163,7 +163,7 @@ describe("playing a shift", () => {
     startShift();
     expect(useUiStore.getState().mode).toBe("shift");
     expect(run().run?.productId).toBe("woodBlock");
-    expect(shift()).toMatchObject({ warmup: true, started: false, timeLeftMs: 30_000 });
+    expect(shift()).toMatchObject({ warmup: true, started: false, timeLeftMs: 60_000 });
   });
 
   it("is not a warm-up once the player has made something", () => {
@@ -180,13 +180,13 @@ describe("playing a shift", () => {
     // Perfects at x1.1 and x1.2, then the product bonus at x1.2.
     expect(shift()).toMatchObject({ machines: 2, products: 1, coins: 13, xp: 21, score: 110 + 120 + 60, started: true });
     // The clock did not move during the warm-up.
-    expect(shift()?.timeLeftMs).toBe(30_000);
+    expect(shift()?.timeLeftMs).toBe(60_000);
 
     createOrder();
     playProduct(100);
     expect(shift()?.products).toBe(2);
     // Two Perfects on three-second machines after one product: 2 x 1,620 ms, capped by nothing yet.
-    expect(shift()?.timeLeftMs).toBe(33_240);
+    expect(shift()?.timeLeftMs).toBe(63_240);
     expect(finishProduct()).toBeNull();
     expect(shift()?.products).toBe(2);
   });

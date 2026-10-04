@@ -94,7 +94,7 @@ export const achievements: AchievementDefinition[] = [
     "shift",
     ["Clocked In", "Overtime", "Employee of the Month"],
     (target) => `Score ${target.toLocaleString("en-US")} in one shift.`,
-    [1500, 4000, 8000],
+    [3000, 8000, 15000],
     [60, 200, 500],
     (context) => context.stats.bestShift.score,
   ),

@@ -38,8 +38,8 @@ export const economy = {
    * for a fixed-length shift.
    */
   shift: {
-    startMs: 30_000,
-    maxMs: 45_000,
+    startMs: 60_000,
+    maxMs: 90_000,
     /** The clock turns urgent below this. */
     lowMs: 5_000,
     /** After time runs out, how long the machine in progress may still be finished. */
