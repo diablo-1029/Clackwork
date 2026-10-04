@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { OrderOffer, ProductId } from "@/types/game";
 
-export type Screen = "factory" | "products" | "upgrades" | "themes" | "settings";
+export type Screen = "factory" | "goals" | "products" | "upgrades" | "themes" | "settings";
 
 interface UiState {
   /** True once the save has been loaded on the client. */

@@ -4,16 +4,19 @@ import { Chip, Tile } from "@/components/ui/Chunky";
 import { Icon } from "@/components/ui/Icon";
 import { machineList } from "@/config/machines";
 import { productList } from "@/config/products";
+import { masteryStars } from "@/game/progression/achievements";
 import { isProductPlayable, resolveMachineSequence, stepName } from "@/game/progression/unlocks";
 import { getMaterialColors } from "@/game/products/materialProfiles";
 import { finishedLook } from "@/game/products/productLook";
 import { ProductIcon } from "@/game/products/ProductRenderer";
+import { useGoalsStore } from "@/stores/goalsStore";
 import { useProgressionStore } from "@/stores/progressionStore";
 import { LockedTag, ScreenFrame } from "./ScreenFrame";
 
 export function ProductsScreen() {
   const unlockedProducts = useProgressionStore((s) => s.products);
   const unlockedMachines = useProgressionStore((s) => s.machines);
+  const productStats = useGoalsStore((s) => s.stats.products);
   const discovered = productList.filter((product) => unlockedProducts.includes(product.id)).length;
 
   return (
@@ -32,6 +35,9 @@ export function ProductsScreen() {
           const unlocked = unlockedProducts.includes(product.id);
           const sequence = resolveMachineSequence(product, unlockedMachines);
           const tint = getMaterialColors(product.materialProfile, false).base;
+          const stat = productStats[product.id];
+          const stars = masteryStars(stat);
+          const made = stat?.made === 1 ? "once" : `${stat?.made ?? 0} times`;
           return (
             <li key={product.id} className="sf-raised flex gap-3 rounded-3xl p-3">
               {/* The product on a shelf tinted with its own material. */}
@@ -51,11 +57,31 @@ export function ProductsScreen() {
                   {!unlocked && <Icon name="lock" size={15} />}
                   {product.name}
                 </h3>
-                <div>
+                <div className="flex flex-wrap items-center gap-2">
                   <Chip tone="gold" className="text-sm text-ink">
                     <Icon name="coin" size={15} /> {product.baseValue}
                     <span className="sr-only"> Coins</span>
                   </Chip>
+                  {/* Mastery: made once, made often, then made often with a flawless order. */}
+                  {unlocked && (
+                    <span
+                      className="flex items-center"
+                      role="img"
+                      aria-label={`Mastery ${stars} of 3 stars, made ${made}`}
+                      title={`Made ${made}, best ${stat?.bestQuality ?? 0}%`}
+                    >
+                      {[0, 1, 2].map((i) => (
+                        <Icon
+                          key={i}
+                          name="xp"
+                          size={17}
+                          fill="currentColor"
+                          strokeWidth={0}
+                          className={i < stars ? "text-gold" : "text-line"}
+                        />
+                      ))}
+                    </span>
+                  )}
                 </div>
                 <ol className="flex flex-wrap gap-1" aria-label="Machines">
                   {sequence.map((id, index) => {

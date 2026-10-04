@@ -11,6 +11,7 @@ import { useRunStore } from "@/stores/runStore";
 import { useUiStore } from "@/stores/uiStore";
 import { isFeatureUnlocked } from "@/game/progression/unlocks";
 import type { OrderOffer, OrderTwist, ProductionRun, RewardSummary } from "@/types/game";
+import { recordProgress } from "./goalActions";
 import { generateOffers, pickProduct, rollGolden } from "./orders";
 import { resolveMachineReward, resolveProductReward } from "./RewardResolver";
 
@@ -231,6 +232,12 @@ export function completeMachine(outcome: MachineOutcome): boolean {
       shielded: reward.shieldUsed,
       overdriveStarted: fever.activated,
     });
+  recordProgress({
+    type: "machine",
+    perfect: reward.isPerfect,
+    streak: reward.streak,
+    overdriveStarted: fever.activated,
+  });
   track("machine_completed", { machineId, productId: run.productId, quality, durationMs: outcome.durationMs });
   devLog("Machine", `${machineId} result=${quality}`);
   return true;
@@ -286,6 +293,14 @@ export function finishProduct(): RewardSummary | null {
 
   runStore.setLastReward(summary);
   runStore.dispatch("REWARD_RESOLVED");
+  recordProgress({
+    type: "order",
+    productId: run.productId,
+    quality: reward.quality,
+    coins: reward.coins,
+    isGolden: run.isGolden,
+    twistWon: Boolean(reward.twist?.achieved),
+  });
   track("product_completed", {
     productId: run.productId,
     quality: reward.quality,

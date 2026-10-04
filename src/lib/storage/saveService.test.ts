@@ -148,4 +148,34 @@ describe("save service", () => {
     writeSave(save, storage);
     expect(loadSave(storage).data.player.fever).toEqual({ charge: 0, ordersLeft: 2 });
   });
+
+  it("loads a save from before goals existed, with nothing dealt or earned", () => {
+    const older = JSON.parse(JSON.stringify(createFreshSave()));
+    delete older.goals;
+    delete older.achievements;
+    delete older.stats;
+    older.player.perfectStreak = 7;
+    const migrated = migrateSave(older)!;
+    expect(migrated.goals).toEqual({ date: "", items: [], bonusPaid: false });
+    expect(migrated.achievements).toEqual([]);
+    // The streak in progress counts as the best so far.
+    expect(migrated.stats).toMatchObject({ bestStreak: 7, goldenMade: 0, products: {} });
+  });
+
+  it("round-trips goals, achievements and stats, dropping unknown achievement ids", () => {
+    const storage = fakeStorage();
+    const save = createFreshSave();
+    save.goals = {
+      date: "2026-10-04",
+      bonusPaid: false,
+      items: [{ kind: "product", target: 2, progress: 1, done: false, reward: 54, productId: "soapBar" }],
+    };
+    save.achievements = ["made10", "made10", "not-a-real-one"];
+    save.stats.products = { woodBlock: { made: 12, bestQuality: 100 } };
+    writeSave(save, storage);
+    const loaded = loadSave(storage).data;
+    expect(loaded.goals).toEqual(save.goals);
+    expect(loaded.achievements).toEqual(["made10"]);
+    expect(loaded.stats.products.woodBlock).toEqual({ made: 12, bestQuality: 100 });
+  });
 });

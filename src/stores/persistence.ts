@@ -7,6 +7,7 @@ import {
   type LoadStatus,
 } from "@/lib/storage/saveService";
 import type { SaveDataCurrent } from "@/types/save";
+import { useGoalsStore } from "./goalsStore";
 import { usePlayerStore } from "./playerStore";
 import { useProgressionStore } from "./progressionStore";
 import { useRunStore } from "./runStore";
@@ -21,6 +22,7 @@ export function buildSave(): SaveDataCurrent {
   const player = usePlayerStore.getState();
   const progression = useProgressionStore.getState();
   const settings = useSettingsStore.getState();
+  const goals = useGoalsStore.getState();
 
   return {
     schemaVersion: 1,
@@ -47,6 +49,9 @@ export function buildSave(): SaveDataCurrent {
       particleDensity: settings.particleDensity,
     },
     onboarding: progression.onboarding,
+    goals: goals.goals,
+    achievements: goals.achievements,
+    stats: goals.stats,
     meta: { createdAt, updatedAt: new Date().toISOString() },
   };
 }
@@ -62,6 +67,7 @@ export function hydrateStores(save: SaveDataCurrent): void {
     onboarding: save.onboarding,
   });
   useSettingsStore.getState().hydrate(save.settings);
+  useGoalsStore.getState().hydrate({ goals: save.goals, achievements: save.achievements, stats: save.stats });
 }
 
 export function saveNow(): void {
@@ -93,6 +99,7 @@ export function initPersistence(): LoadStatus {
   usePlayerStore.subscribe(queueSave);
   useProgressionStore.subscribe(queueSave);
   useSettingsStore.subscribe(queueSave);
+  useGoalsStore.subscribe(queueSave);
 
   useUiStore.getState().setHydrated();
   devLog("Save", `load status=${status}`);

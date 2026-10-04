@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { achievements, emptyStats, isEarned, masteryStars, newlyEarned } from "./achievements";
+import { applyGoalEvent, dateKey, describeGoal, goalBonus, goalReward, goalsForToday, pickDailyGoals } from "./goals";
 import { products } from "@/config/products";
 import { applyXp, levelUpBonus, xpRequired } from "./levels";
 import {
@@ -196,5 +198,130 @@ describe("upgrades", () => {
     expect(canPurchaseUpgrade("betterMaterials", 0, 49, 2)).toMatchObject({ ok: false, reason: "coins" });
     expect(canPurchaseUpgrade("betterMaterials", 0, 50, 2)).toMatchObject({ ok: true, cost: 50 });
     expect(canPurchaseUpgrade("betterMaterials", 10, 1e9, 20)).toMatchObject({ ok: false, reason: "maxed" });
+  });
+});
+
+describe("daily goals", () => {
+  const unlocked = ["woodBlock", "soapBar", "ceramicCoaster"] as const;
+
+  it("uses the local calendar day", () => {
+    expect(dateKey(new Date(2026, 0, 5, 23, 59))).toBe("2026-01-05");
+  });
+
+  it("gives the same three different goals for the same day", () => {
+    const first = pickDailyGoals("2026-10-04", 9, [...unlocked]);
+    expect(first).toHaveLength(3);
+    expect(new Set(first.map((goal) => goal.kind)).size).toBe(3);
+    expect(pickDailyGoals("2026-10-04", 9, [...unlocked])).toEqual(first);
+  });
+
+  it("varies from day to day", () => {
+    const days = Array.from({ length: 30 }, (_, i) => `2026-11-${String(i + 1).padStart(2, "0")}`);
+    const sets = new Set(days.map((date) => pickDailyGoals(date, 9, [...unlocked]).map((goal) => goal.kind).join()));
+    expect(sets.size).toBeGreaterThan(5);
+  });
+
+  it("only offers goals the player can do", () => {
+    for (let i = 1; i <= 28; i++) {
+      const early = pickDailyGoals(`2026-02-${String(i).padStart(2, "0")}`, 2, ["woodBlock"]);
+      expect(early.some((goal) => goal.kind === "twist" || goal.kind === "product")).toBe(false);
+      expect(early.every((goal) => goal.target > 0 && goal.reward === goalReward(2))).toBe(true);
+    }
+  });
+
+  it("pays more at higher levels, and double for the bonus", () => {
+    expect(goalReward(2)).toBe(54);
+    expect(goalReward(12)).toBe(174);
+    expect(goalBonus(12)).toBe(348);
+  });
+
+  it("keeps today's goals and replaces yesterday's", () => {
+    const today = goalsForToday({ date: "", items: [], bonusPaid: false }, new Date(2026, 9, 4), 5, [...unlocked]);
+    expect(goalsForToday(today, new Date(2026, 9, 4, 22), 5, [...unlocked])).toBe(today);
+    expect(goalsForToday({ ...today, bonusPaid: true }, new Date(2026, 9, 5), 5, [...unlocked])).toMatchObject({
+      date: "2026-10-05",
+      bonusPaid: false,
+    });
+  });
+
+  it("moves each kind of goal on the right event", () => {
+    const goal = (kind: Parameters<typeof describeGoal>[0]["kind"], target: number) => ({
+      kind,
+      target,
+      progress: 0,
+      done: false,
+      reward: 10,
+    });
+    const items = [goal("products", 2), goal("perfects", 2), goal("streak", 4), goal("coins", 50), goal("twist", 1)];
+    const withProduct = [...items, { ...goal("product", 1), productId: "soapBar" as const }];
+
+    let step = applyGoalEvent(withProduct, { type: "machine", perfect: true, streak: 3 });
+    expect(step.goals.map((g) => g.progress)).toEqual([0, 1, 3, 0, 0, 0]);
+    // A lower streak later does not undo the best one.
+    step = applyGoalEvent(step.goals, { type: "machine", perfect: false, streak: 1 });
+    expect(step.goals[2].progress).toBe(3);
+
+    step = applyGoalEvent(step.goals, { type: "order", productId: "woodBlock", coins: 60, twistWon: true });
+    expect(step.goals.map((g) => g.progress)).toEqual([1, 1, 3, 50, 1, 0]);
+    expect(step.completed.map((g) => g.kind)).toEqual(["coins", "twist"]);
+
+    // Finished goals stay finished and are not reported again.
+    step = applyGoalEvent(step.goals, { type: "order", productId: "soapBar", coins: 60, twistWon: true });
+    expect(step.completed.map((g) => g.kind)).toEqual(["products", "product"]);
+  });
+
+  it("describes goals in plain words", () => {
+    const base = { target: 3, progress: 0, done: false, reward: 10 };
+    expect(describeGoal({ ...base, kind: "products" })).toBe("Make 3 products");
+    expect(describeGoal({ ...base, kind: "twist", target: 1 })).toBe("Win a twist order");
+    expect(describeGoal({ ...base, kind: "product", productId: "soapBar" })).toBe("Make 3 Soap Bars");
+  });
+});
+
+describe("achievements and mastery", () => {
+  const context = (over: Partial<Parameters<typeof newlyEarned>[0]> = {}) => ({
+    productsMade: 0,
+    perfects: 0,
+    stats: emptyStats,
+    playableProducts: 6,
+    ...over,
+  });
+
+  it("has unique ids", () => {
+    expect(new Set(achievements.map((a) => a.id)).size).toBe(achievements.length);
+  });
+
+  it("earns nothing on a fresh factory", () => {
+    expect(newlyEarned(context(), [])).toEqual([]);
+  });
+
+  it("earns each tier at its target and skips ones already paid", () => {
+    const ids = (list: ReturnType<typeof newlyEarned>) => list.map((a) => a.id);
+    expect(ids(newlyEarned(context({ productsMade: 50 }), []))).toEqual(["made10", "made50"]);
+    expect(ids(newlyEarned(context({ productsMade: 50 }), ["made10"]))).toEqual(["made50"]);
+    expect(ids(newlyEarned(context({ stats: { ...emptyStats, bestStreak: 10, overdrives: 1 } }), []))).toEqual([
+      "streak5",
+      "streak10",
+      "overdrive1",
+    ]);
+  });
+
+  it("needs every playable product for the catalogue", () => {
+    const collector = achievements.find((a) => a.id === "collector")!;
+    const made = { made: 1, bestQuality: 80 };
+    const five = { woodBlock: made, soapBar: made, ceramicCoaster: made, crystal: made, toyRobot: made };
+    expect(isEarned(collector, context({ stats: { ...emptyStats, products: five } }))).toBe(false);
+    expect(isEarned(collector, context({ stats: { ...emptyStats, products: { ...five, goldIngot: made } } }))).toBe(true);
+  });
+
+  it.each([
+    [undefined, 0],
+    [{ made: 1, bestQuality: 60 }, 1],
+    [{ made: 10, bestQuality: 60 }, 2],
+    [{ made: 25, bestQuality: 99 }, 2],
+    [{ made: 25, bestQuality: 100 }, 3],
+    [{ made: 9, bestQuality: 100 }, 1],
+  ])("mastery for %o is %i stars", (stat, stars) => {
+    expect(masteryStars(stat)).toBe(stars);
   });
 });

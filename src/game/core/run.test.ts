@@ -7,6 +7,8 @@ import { usePlayerStore } from "@/stores/playerStore";
 import { useProgressionStore } from "@/stores/progressionStore";
 import { useRunStore } from "@/stores/runStore";
 import { useUiStore } from "@/stores/uiStore";
+import { useGoalsStore } from "@/stores/goalsStore";
+import { recordProgress, refreshGoals } from "./goalActions";
 import { generateOffers, parTimeMs, pickProduct, resolveTwist, rollGolden } from "./orders";
 import { calculateProductQuality, projectOrderValue, resolveProductReward } from "./RewardResolver";
 import {
@@ -359,7 +361,8 @@ describe("toy robot", () => {
     // 90 x 1.30 (Perfect) x 1.10 (streak of 7) = 128.7, rounded to 129
     expect(summary).toMatchObject({ productId: "toyRobot", quality: 100, coins: 129 });
     expect(finishProduct()).toBeNull();
-    expect(player().coins).toBe(129);
+    // The order's 129, plus 40 for the streak-of-5 achievement earned along the way.
+    expect(player().coins).toBe(129 + 40);
   });
 });
 
@@ -782,5 +785,108 @@ describe("fever mode", () => {
   it("stacks with a Golden order", () => {
     const base = { product: products.woodBlock, results: [], streak: 0, upgradeLevels: {} };
     expect(projectOrderValue({ ...base, isGolden: true, overdrive: true })).toBe(100);
+  });
+});
+
+describe("goals and achievements", () => {
+  const goals = () => useGoalsStore.getState();
+  const day = new Date(2026, 9, 4, 12);
+  const machine = (perfect: boolean, streak = 0) =>
+    recordProgress({ type: "machine", perfect, streak, overdriveStarted: false }, day);
+  const order = (coins = 10) =>
+    recordProgress({ type: "order", productId: "woodBlock", quality: 90, coins, isGolden: false, twistWon: false }, day);
+
+  it("keeps stats from the start but deals no goals before level 2", () => {
+    machine(true, 3);
+    order();
+    expect(goals().stats.bestStreak).toBe(3);
+    expect(goals().stats.products.woodBlock).toEqual({ made: 1, bestQuality: 90 });
+    expect(goals().goals.items).toHaveLength(0);
+    expect(player().coins).toBe(0);
+  });
+
+  it("deals three goals for the day and keeps them until the date changes", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 2 });
+    refreshGoals(day);
+    const first = goals().goals;
+    expect(first.items).toHaveLength(3);
+    expect(first.date).toBe("2026-10-04");
+
+    refreshGoals(new Date(2026, 9, 4, 23, 59));
+    expect(goals().goals).toBe(first);
+
+    refreshGoals(new Date(2026, 9, 5, 0, 1));
+    expect(goals().goals.date).toBe("2026-10-05");
+    expect(goals().goals.items.every((goal) => goal.progress === 0)).toBe(true);
+  });
+
+  it("pays a goal once when it is reached, with a toast and a dot on the tab", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 2 });
+    useGoalsStore.getState().setGoals({
+      date: "2026-10-04",
+      bonusPaid: false,
+      items: [
+        { kind: "products", target: 2, progress: 0, done: false, reward: 54 },
+        { kind: "perfects", target: 50, progress: 0, done: false, reward: 54 },
+      ],
+    });
+
+    order();
+    expect(player().coins).toBe(0);
+    order();
+    expect(goals().goals.items[0]).toMatchObject({ progress: 2, done: true });
+    expect(player().coins).toBe(54);
+    expect(goals().unseen).toBe(1);
+    expect(useUiStore.getState().toast?.message).toContain("Goal complete: Make 2 products");
+
+    order();
+    expect(player().coins).toBe(54);
+  });
+
+  it("pays the bonus once when every goal is done", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 2 });
+    useGoalsStore.getState().setGoals({
+      date: "2026-10-04",
+      bonusPaid: false,
+      items: [
+        { kind: "products", target: 1, progress: 0, done: false, reward: 54 },
+        { kind: "coins", target: 10, progress: 0, done: false, reward: 54 },
+      ],
+    });
+    order(10);
+    // Two goals at 54 each, plus the all-done bonus of 108.
+    expect(player().coins).toBe(216);
+    expect(goals().goals.bonusPaid).toBe(true);
+    order(10);
+    expect(player().coins).toBe(216);
+  });
+
+  it("earns an achievement once and pays its reward", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 2 });
+    // A day's goal that will not complete here, so only the achievement pays.
+    useGoalsStore.getState().setGoals({
+      date: "2026-10-04",
+      bonusPaid: false,
+      items: [{ kind: "products", target: 99, progress: 0, done: false, reward: 54 }],
+    });
+    machine(true, 5);
+    expect(goals().achievements).toEqual(["streak5"]);
+    expect(player().coins).toBe(40);
+    machine(true, 6);
+    expect(goals().achievements).toEqual(["streak5"]);
+    expect(player().coins).toBe(40);
+  });
+
+  it("counts a real order: stats, goals and the Golden achievement", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 2 });
+    useUiStore.getState().setDebug({ goldenNext: true });
+    createOrder();
+    run().dispatch("INTRO_DONE");
+    playMachine(100);
+    playMachine(100);
+    finishProduct();
+    expect(goals().stats.goldenMade).toBe(1);
+    expect(goals().stats.products.woodBlock).toEqual({ made: 1, bestQuality: 100 });
+    expect(goals().achievements).toContain("golden1");
   });
 });

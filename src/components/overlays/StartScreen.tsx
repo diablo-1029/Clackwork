@@ -9,7 +9,9 @@ import { Icon } from "@/components/ui/Icon";
 import { productList } from "@/config/products";
 import { finishedLook } from "@/game/products/productLook";
 import { ProductIcon } from "@/game/products/ProductRenderer";
-import { getNextUnlock, isProductPlayable } from "@/game/progression/unlocks";
+import { describeGoal } from "@/game/progression/goals";
+import { getNextUnlock, isFeatureUnlocked, isProductPlayable } from "@/game/progression/unlocks";
+import { useGoalsStore } from "@/stores/goalsStore";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useProgressionStore } from "@/stores/progressionStore";
 import { useUiStore } from "@/stores/uiStore";
@@ -37,6 +39,8 @@ export function StartScreen() {
   const setOnboarding = useProgressionStore((s) => s.setOnboarding);
   const startSession = useUiStore((s) => s.startSession);
   const nextUnlock = getNextUnlock(level);
+  const goals = useGoalsStore((s) => s.goals.items);
+  const showGoals = isFeatureUnlocked("goals", level) && goals.length > 0;
   const lineup = productList.filter(isProductPlayable);
 
   const start = () => {
@@ -102,6 +106,30 @@ export function StartScreen() {
             <Icon name="lock" size={14} />
             Next: {nextUnlock.name} at Level {nextUnlock.level}
           </Chip>
+        )}
+
+        {showGoals && (
+          <div className="text-left">
+            <p className="text-[10px] font-black tracking-wider text-muted uppercase">Today&apos;s goals</p>
+            <ul className="mt-1 flex flex-col gap-1">
+              {goals.map((goal, index) => (
+                <li key={`${goal.kind}-${index}`} className="flex items-center gap-2 text-sm font-extrabold">
+                  <Icon
+                    name={goal.done ? "check" : "goal"}
+                    size={15}
+                    strokeWidth={goal.done ? 3 : 2}
+                    className={goal.done ? "text-success" : "text-brand-deep"}
+                  />
+                  <span className={`min-w-0 flex-1 truncate ${goal.done ? "text-muted line-through" : ""}`}>
+                    {describeGoal(goal)}
+                  </span>
+                  <span className="shrink-0 text-xs font-black text-muted tabular-nums">
+                    {goal.progress} / {goal.target}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         <p className="text-base font-extrabold">{returning ? "Your next order is ready." : "Your first order is ready."}</p>

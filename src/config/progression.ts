@@ -3,13 +3,19 @@
  * (those carry their own `unlockLevel` in their config files).
  */
 export interface FeatureUnlock {
-  id: "orderBoard" | "fever" | "orderTwists" | "streakIndicator" | "themeSelection";
+  id: "goals" | "orderBoard" | "fever" | "orderTwists" | "streakIndicator" | "themeSelection";
   name: string;
   description: string;
   unlockLevel: number;
 }
 
 export const featureUnlocks: FeatureUnlock[] = [
+  {
+    id: "goals",
+    name: "Daily Goals",
+    description: "Three goals a day and lasting achievements, all paying coins.",
+    unlockLevel: 2,
+  },
   {
     id: "orderBoard",
     name: "Order Board",

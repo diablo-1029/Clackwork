@@ -30,6 +30,10 @@ export const economy = {
   /** A non-perfect result at or above this only costs one streak step. */
   streakKeepThreshold: 70,
   goldenMultiplier: 5,
+  /** Daily goals: how many a day, what each pays (base + perLevel × Factory Level), and the all-done bonus. */
+  goals: { perDay: 3, base: 30, perLevel: 12, bonusFactor: 2 },
+  /** Orders of one product needed for two and three mastery stars (three also needs a 100% order). */
+  mastery: { twoStars: 10, threeStars: 25 },
   /**
    * The fever meter: `size` Perfects fill it, a result below `poorQuality` drains one,
    * and a full meter makes the next `orders` finished orders pay `coinMultiplier` times the coins.

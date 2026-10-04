@@ -1,6 +1,7 @@
 import { upgradeList, zeroUpgradeLevels } from "@/config/upgrades";
 import { machinesUnlockedAt, productsUnlockedAt } from "@/game/progression/unlocks";
 import { clampFever, emptyFever } from "@/game/economy/fever";
+import { achievements } from "@/game/progression/achievements";
 import { xpRequired } from "@/game/progression/levels";
 import { SaveEnvelopeSchema, SaveSchemaV1 } from "@/lib/validation/saveSchema";
 import type { SaveDataCurrent, SaveDataV1 } from "@/types/save";
@@ -83,6 +84,9 @@ export function createFreshSave(now: Date = new Date()): SaveDataCurrent {
       hasSeenUpgradeIntro: false,
       hasSeenGoldenIntro: false,
     },
+    goals: { date: "", items: [], bonusPaid: false },
+    achievements: [],
+    stats: { bestStreak: 0, goldenMade: 0, twistsWon: 0, overdrives: 0, products: {} },
     meta: { createdAt: timestamp, updatedAt: timestamp },
   };
 }
@@ -112,6 +116,13 @@ function migrateV1ToCurrent(save: SaveDataV1): SaveDataCurrent {
       (levels, upgrade) => ({ ...levels, [upgrade.id]: Math.min(save.upgrades[upgrade.id] ?? 0, upgrade.maxLevel) }),
       zeroUpgradeLevels(),
     ),
+    // Unknown ids (from a newer or older build) are dropped rather than trusted.
+    achievements: unique(save.achievements).filter((id) => achievements.some((definition) => definition.id === id)),
+    stats: {
+      ...save.stats,
+      // A streak in progress is at least the best the player has had.
+      bestStreak: Math.max(save.stats.bestStreak, save.player.perfectStreak),
+    },
     settings: {
       ...save.settings,
       selectedFactoryTheme:

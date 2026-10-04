@@ -69,6 +69,34 @@ export const SaveSchemaV1 = z.object({
     hasSeenGoldenIntro: z.boolean(),
   }),
 
+  // Added with daily goals: older saves start with none dealt and nothing earned.
+  goals: z
+    .object({
+      date: z.string(),
+      bonusPaid: z.boolean(),
+      items: z.array(
+        z.object({
+          kind: z.enum(["products", "perfects", "twist", "streak", "coins", "product"]),
+          target: count,
+          progress: count,
+          done: z.boolean(),
+          reward: count,
+          productId: productId.optional(),
+        }),
+      ),
+    })
+    .default({ date: "", bonusPaid: false, items: [] }),
+  achievements: z.array(z.string()).default([]),
+  stats: z
+    .object({
+      bestStreak: count,
+      goldenMade: count,
+      twistsWon: count,
+      overdrives: count,
+      products: z.partialRecord(productId, z.object({ made: count, bestQuality: z.number().min(0).max(100) })),
+    })
+    .default({ bestStreak: 0, goldenMade: 0, twistsWon: 0, overdrives: 0, products: {} }),
+
   meta: z.object({
     createdAt: z.string(),
     updatedAt: z.string(),

@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
 import { Toast } from "@/components/feedback/Toast";
 import { BottomNav } from "@/components/navigation/BottomNav";
 import { StartScreen } from "@/components/overlays/StartScreen";
+import { GoalsScreen } from "@/components/screens/GoalsScreen";
 import { ProductsScreen } from "@/components/screens/ProductsScreen";
 import { SettingsScreen } from "@/components/screens/SettingsScreen";
 import { ThemesScreen } from "@/components/screens/ThemesScreen";
@@ -18,6 +19,7 @@ import { initPersistence } from "@/stores/persistence";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import { FactoryBackdrop } from "./FactoryBackdrop";
+import { refreshGoals } from "./goalActions";
 import { ProductionRunController } from "./ProductionRunController";
 
 function FactoryScreen() {
@@ -53,6 +55,8 @@ export function GameShell() {
     if (status === "corrupt") {
       useUiStore.getState().showToast("Your save could not be read, so a fresh factory was started.");
     }
+    // Today's goals are dealt as soon as the save is in, so the start screen can show them.
+    refreshGoals();
   }, []);
 
   // "System" leaves the attribute off so the CSS media query decides.
@@ -95,7 +99,8 @@ export function GameShell() {
                 )}
               >
                 {screen === "factory" && <FactoryScreen />}
-                {screen === "products" && <ProductsScreen />}
+                {screen === "goals" && <GoalsScreen />}
+              {screen === "products" && <ProductsScreen />}
                 {screen === "upgrades" && <UpgradesScreen />}
                 {screen === "themes" && <ThemesScreen />}
                 {screen === "settings" && <SettingsScreen />}
