@@ -14,7 +14,7 @@ factory themes.
 - Every level-up pays a coin bonus and announces what it unlocks; the level curve lives in `src/config/economy.ts`
 - Works with mouse, pen and touch
 - Light and dark modes, five factory themes, reduced-motion and sound settings
-- Published to GitHub Pages from `main` by `.github/workflows/pages.yml`
+- Playable at https://diablo-1029.github.io/Clackwork/ (published with `npm run deploy`)
 - Frontend only: a static site with progress saved in the browser (`localStorage`)
 
 ## Run it
@@ -30,6 +30,7 @@ Then open http://localhost:3000.
 | --- | --- |
 | `npm run dev` | Development server |
 | `npm run build` | Static production build into `out/` (deploy to any static host) |
+| `npm run deploy` | Builds for GitHub Pages and publishes to the `gh-pages` branch |
 | `npm test` | Unit and integration tests (Vitest) |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript, no emit |
