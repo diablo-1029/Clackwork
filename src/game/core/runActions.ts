@@ -344,7 +344,7 @@ export function endShift(): ShiftSummary | null {
   shifts.setSummary(summary);
   // A product left unfinished on the belt is dropped; its machines have already scored.
   useRunStore.getState().clear();
-  recordProgress({ type: "shift", score: summary.score, products: summary.products });
+  recordProgress({ type: "shift", score: summary.score, products: summary.products, at: new Date().toISOString() });
   devLog("Shift", `score=${summary.score} products=${summary.products}`);
   return summary;
 }

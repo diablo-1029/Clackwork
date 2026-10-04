@@ -201,6 +201,8 @@ describe("playing a shift", () => {
     expect(run().run).toBeNull();
     expect(useShiftStore.getState().summary).toEqual(summary);
     expect(useGoalsStore.getState().stats.bestShift).toEqual({ score: 290, products: 1 });
+    // It also goes on the player's own list.
+    expect(useGoalsStore.getState().stats.shiftHistory).toMatchObject([{ score: 290, products: 1 }]);
     expect(endShift()).toBeNull();
   });
 

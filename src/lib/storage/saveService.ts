@@ -86,7 +86,7 @@ export function createFreshSave(now: Date = new Date()): SaveDataCurrent {
     },
     goals: { date: "", items: [], bonusPaid: false },
     achievements: [],
-    stats: { ...emptyStats, products: {}, bestShift: { ...emptyStats.bestShift } },
+    stats: { ...emptyStats, products: {}, bestShift: { ...emptyStats.bestShift }, shiftHistory: [] },
     meta: { createdAt: timestamp, updatedAt: timestamp },
   };
 }

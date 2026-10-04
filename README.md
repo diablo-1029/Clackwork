@@ -6,6 +6,7 @@ for quality. Better quality means more coins; coins buy upgrades; XP unlocks new
 factory themes.
 
 - Timed shifts are the main game: a 60-second clock, time won back by good results and lost by poor ones, a combo score and a best to beat. Free play is the untimed game
+- A leaderboard: your own top ten shifts, and a shared board for everyone once it is set up (`docs/leaderboard-setup.md`)
 - Seven machines and six products, with Perfect streaks and rare Golden orders
 - Machines play differently from order to order, with more variants as the factory levels up
 - From Level 3 you pick each order from three cards, some with a twist (Rush, Precision, Training)

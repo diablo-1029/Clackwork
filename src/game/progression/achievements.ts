@@ -1,4 +1,5 @@
 import { economy } from "@/config/economy";
+import type { ShiftRecord } from "@/game/core/leaderboard";
 import type { ProductId } from "@/types/game";
 
 /** Lifetime numbers that are not part of the player's core save. */
@@ -10,6 +11,8 @@ export interface FactoryStats {
   products: Partial<Record<ProductId, ProductStat>>;
   /** The best shift so far, by score. */
   bestShift: { score: number; products: number };
+  /** The player's own top shifts, best first. */
+  shiftHistory: ShiftRecord[];
 }
 
 export interface ProductStat {
@@ -24,6 +27,7 @@ export const emptyStats: FactoryStats = {
   overdrives: 0,
   products: {},
   bestShift: { score: 0, products: 0 },
+  shiftHistory: [],
 };
 
 /** Everything an achievement can look at. */

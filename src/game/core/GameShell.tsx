@@ -9,6 +9,7 @@ import { Toast } from "@/components/feedback/Toast";
 import { BottomNav } from "@/components/navigation/BottomNav";
 import { StartScreen } from "@/components/overlays/StartScreen";
 import { GoalsScreen } from "@/components/screens/GoalsScreen";
+import { LeaderboardScreen } from "@/components/screens/LeaderboardScreen";
 import { ProductsScreen } from "@/components/screens/ProductsScreen";
 import { SettingsScreen } from "@/components/screens/SettingsScreen";
 import { ThemesScreen } from "@/components/screens/ThemesScreen";
@@ -116,7 +117,8 @@ export function GameShell() {
                 )}
               >
                 {screen === "factory" && <FactoryScreen />}
-                {screen === "goals" && <GoalsScreen />}
+                {screen === "leaderboard" && <LeaderboardScreen />}
+              {screen === "goals" && <GoalsScreen />}
               {screen === "products" && <ProductsScreen />}
                 {screen === "upgrades" && <UpgradesScreen />}
                 {screen === "themes" && <ThemesScreen />}

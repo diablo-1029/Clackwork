@@ -1,12 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { Ribbon } from "@/components/ui/Chunky";
 import { Icon } from "@/components/ui/Icon";
 import { useAnimatedNumber } from "@/components/ui/useAnimatedNumber";
 import { comboMultiplier, type ShiftSummary as Summary } from "@/game/core/shift";
+import { getPlayerName, isOnlineBoardConfigured, submitScore } from "@/lib/onlineBoard";
 
 function Stat({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
   return (
@@ -27,11 +28,41 @@ interface ShiftSummaryProps {
   onContinue: () => void;
   onPlayAgain: () => void;
   onFreePlay: () => void;
+  onLeaderboard: () => void;
 }
 
 /** The end of a shift: the score to beat, what was earned, and straight back in. */
-export function ShiftSummary({ summary, levelUpsPending, onContinue, onPlayAgain, onFreePlay }: ShiftSummaryProps) {
+export function ShiftSummary({
+  summary,
+  levelUpsPending,
+  onContinue,
+  onPlayAgain,
+  onFreePlay,
+  onLeaderboard,
+}: ShiftSummaryProps) {
   const score = useAnimatedNumber(summary.score, 700);
+  const [posted, setPosted] = useState<"none" | "posted" | "unnamed">("none");
+
+  // With the shared board on and a name chosen, every shift posts itself; the board keeps the best.
+  useEffect(() => {
+    if (!isOnlineBoardConfigured() || !(summary.score > 0)) return;
+    let cancelled = false;
+    const name = getPlayerName();
+    const settle = (state: "posted" | "unnamed" | "none") => {
+      if (!cancelled) setPosted(state);
+    };
+    if (!name) {
+      const timer = window.setTimeout(() => settle("unnamed"), 0);
+      return () => {
+        cancelled = true;
+        window.clearTimeout(timer);
+      };
+    }
+    submitScore({ name, score: summary.score, products: summary.products }).then((ok) => settle(ok ? "posted" : "none"));
+    return () => {
+      cancelled = true;
+    };
+  }, [summary.score, summary.products]);
 
   return (
     <div className="absolute inset-0 flex items-center justify-center p-4">
@@ -88,9 +119,21 @@ export function ShiftSummary({ summary, levelUpsPending, onContinue, onPlayAgain
             <Button onClick={onPlayAgain} className="w-full text-lg" autoFocus>
               Play again
             </Button>
-            <Button variant="ghost" onClick={onFreePlay} className="min-h-11 w-full">
-              Free play
-            </Button>
+            <div className="flex w-full gap-2">
+              <Button variant="ghost" onClick={onFreePlay} className="min-h-11 flex-1 px-2">
+                Free play
+              </Button>
+              <Button variant="ghost" onClick={onLeaderboard} className="min-h-11 flex-1 px-2">
+                Leaderboard
+              </Button>
+            </div>
+            {posted !== "none" && (
+              <p className="text-center text-xs font-bold text-muted">
+                {posted === "posted"
+                  ? "Score posted to the leaderboard."
+                  : "Pick a name on the Leaderboard to post your scores."}
+              </p>
+            )}
           </>
         )}
       </motion.div>

@@ -40,6 +40,7 @@ export function StartScreen() {
   const setOnboarding = useProgressionStore((s) => s.setOnboarding);
   const startSession = useUiStore((s) => s.startSession);
   const setMode = useUiStore((s) => s.setMode);
+  const setScreen = useUiStore((s) => s.setScreen);
   const bestShift = useGoalsStore((s) => s.stats.bestShift.score);
   const nextUnlock = getNextUnlock(level);
   const goals = useGoalsStore((s) => s.goals.items);
@@ -148,9 +149,15 @@ export function StartScreen() {
         <Button silent onClick={() => start("shift")} className="w-full text-lg">
           Start Shift
         </Button>
-        <Button silent variant="ghost" onClick={() => start("free")} className="-mt-1 min-h-11 w-full">
-          Free play
-        </Button>
+        <div className="-mt-1 flex gap-2">
+          <Button silent variant="ghost" onClick={() => start("free")} className="min-h-11 flex-1 px-2">
+            Free play
+          </Button>
+          <Button variant="ghost" onClick={() => setScreen("leaderboard")} className="min-h-11 flex-1 px-2">
+            <Icon name="xp" size={16} fill="currentColor" strokeWidth={0} className="text-gold" />
+            Leaderboard
+          </Button>
+        </div>
       </Panel>
     </div>
   );

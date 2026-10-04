@@ -5,6 +5,7 @@ import {
   type AchievementContext,
   type FactoryStats,
 } from "@/game/progression/achievements";
+import { addShiftRecord } from "./leaderboard";
 import { applyGoalEvent, describeGoal, goalBonus, goalsForToday, type GoalEvent } from "@/game/progression/goals";
 import { isFeatureUnlocked, isProductPlayable } from "@/game/progression/unlocks";
 import { devLog } from "@/lib/analytics";
@@ -50,13 +51,16 @@ export function achievementContext(): AchievementContext {
 export type ProgressEvent =
   | { type: "machine"; perfect: boolean; streak: number; overdriveStarted: boolean }
   | { type: "order"; productId: ProductId; quality: number; coins: number; isGolden: boolean; twistWon: boolean }
-  | { type: "shift"; score: number; products: number };
+  | { type: "shift"; score: number; products: number; at: string };
 
 function statsAfter(stats: FactoryStats, event: ProgressEvent): FactoryStats {
   if (event.type === "shift") {
-    return event.score > stats.bestShift.score
-      ? { ...stats, bestShift: { score: event.score, products: event.products } }
-      : stats;
+    const record = { score: event.score, products: event.products, at: event.at };
+    return {
+      ...stats,
+      bestShift: event.score > stats.bestShift.score ? { score: event.score, products: event.products } : stats.bestShift,
+      shiftHistory: addShiftRecord(stats.shiftHistory, record),
+    };
   }
   if (event.type === "machine") {
     return {

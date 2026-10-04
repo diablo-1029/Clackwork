@@ -76,6 +76,7 @@ export function ProductionRunController() {
   const mode = useUiStore((s) => s.mode);
   const setMode = useUiStore((s) => s.setMode);
   const endSession = useUiStore((s) => s.endSession);
+  const setScreen = useUiStore((s) => s.setScreen);
   const shift = useShiftStore((s) => s.shift);
   const shiftSummary = useShiftStore((s) => s.summary);
   // A shift runs products back to back against the clock; free play is the untimed game.
@@ -283,6 +284,7 @@ export function ProductionRunController() {
             useShiftStore.getState().reset();
             setMode("free");
           }}
+          onLeaderboard={() => setScreen("leaderboard")}
         />
         {celebrating && (
           <LevelUpOverlay

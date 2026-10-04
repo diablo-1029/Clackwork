@@ -5,7 +5,7 @@ import type { OrderOffer, ProductId } from "@/types/game";
 /** How the factory is being played: against the clock, or untimed with the order board. */
 export type PlayMode = "shift" | "free";
 
-export type Screen = "factory" | "goals" | "products" | "upgrades" | "themes" | "settings";
+export type Screen = "factory" | "leaderboard" | "goals" | "products" | "upgrades" | "themes" | "settings";
 
 interface UiState {
   /** True once the save has been loaded on the client. */
