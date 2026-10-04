@@ -47,7 +47,7 @@ export function StartScreen() {
   };
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 overflow-y-auto p-4 text-center">
+    <div className="absolute inset-0 flex flex-col items-center justify-center-safe gap-4 overflow-y-auto p-4 text-center">
       <h2
         className="text-4xl leading-none font-black tracking-tight text-stage-ink sm:text-6xl"
         // A halo of the wall colour keeps the name clear of the scenery behind it.
