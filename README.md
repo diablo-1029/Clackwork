@@ -14,6 +14,7 @@ factory themes.
 - Every level-up pays a coin bonus and announces what it unlocks; the level curve lives in `src/config/economy.ts`
 - Works with mouse, pen and touch
 - Light and dark modes, five factory themes, reduced-motion and sound settings
+- Published to GitHub Pages from `main` by `.github/workflows/pages.yml`
 - Frontend only: a static site with progress saved in the browser (`localStorage`)
 
 ## Run it

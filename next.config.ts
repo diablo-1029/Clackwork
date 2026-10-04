@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Pin the workspace root to this project; a lockfile higher up the tree would otherwise be picked.
   turbopack: { root: __dirname },
+  // GitHub Pages serves the game from /<repository name>/; the deploy workflow sets this. Empty everywhere else.
+  basePath: process.env.PAGES_BASE_PATH || undefined,
 };
 
 export default nextConfig;
