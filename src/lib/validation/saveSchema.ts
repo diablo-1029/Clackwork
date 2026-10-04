@@ -25,6 +25,8 @@ export const SaveSchemaV1 = z.object({
     perfectStreak: count,
     totalProductsCompleted: count,
     totalPerfects: count,
+    // Added with the fever meter: older saves start with it empty.
+    fever: z.object({ charge: count, ordersLeft: count }).default({ charge: 0, ordersLeft: 0 }),
   }),
 
   unlocks: z.object({

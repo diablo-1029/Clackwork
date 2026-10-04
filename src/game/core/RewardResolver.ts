@@ -1,5 +1,6 @@
 import { calculateCoins } from "@/game/economy/calculateCoins";
 import { boostXp, calculateCompletionXp, calculateMachineXp } from "@/game/economy/calculateXp";
+import { getOverdriveMultiplier } from "@/game/economy/fever";
 import {
   clampQuality,
   getGoldenMultiplier,
@@ -57,6 +58,8 @@ export interface ProductRewardInput {
   upgradeLevels: UpgradeLevels;
   isGolden: boolean;
   twist?: OrderTwist;
+  /** Overdrive is on: the order pays the fever multiplier on top of everything else. */
+  overdrive?: boolean;
 }
 
 export interface ProductReward {
@@ -97,7 +100,7 @@ export function resolveProductReward(input: ProductRewardInput): ProductReward {
 
   return {
     quality,
-    coins: Math.round(coins * twist.coinMultiplier),
+    coins: Math.round(coins * twist.coinMultiplier * getOverdriveMultiplier(Boolean(input.overdrive))),
     // An XP twist covers the whole order; the machines' share was already paid, so it is added here.
     completionXp: completionXp + Math.round((machineXp + completionXp) * (twist.xpMultiplier - 1)),
     machineXp,
@@ -118,6 +121,7 @@ export function projectOrderValue(input: ProductRewardInput): number {
     input.product.baseValue *
       getStreakMultiplier(input.streak) *
       getProductValueMultiplier(input.upgradeLevels) *
-      getGoldenMultiplier(input.isGolden),
+      getGoldenMultiplier(input.isGolden) *
+      getOverdriveMultiplier(Boolean(input.overdrive)),
   );
 }

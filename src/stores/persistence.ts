@@ -31,6 +31,7 @@ export function buildSave(): SaveDataCurrent {
       perfectStreak: player.perfectStreak,
       totalProductsCompleted: player.totalProductsCompleted,
       totalPerfects: player.totalPerfects,
+      fever: player.fever,
     },
     unlocks: {
       machines: progression.machines,

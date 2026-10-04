@@ -3,7 +3,7 @@
  * (those carry their own `unlockLevel` in their config files).
  */
 export interface FeatureUnlock {
-  id: "orderBoard" | "orderTwists" | "streakIndicator" | "themeSelection";
+  id: "orderBoard" | "fever" | "orderTwists" | "streakIndicator" | "themeSelection";
   name: string;
   description: string;
   unlockLevel: number;
@@ -14,6 +14,12 @@ export const featureUnlocks: FeatureUnlock[] = [
     id: "orderBoard",
     name: "Order Board",
     description: "Choose your next order from three cards.",
+    unlockLevel: 3,
+  },
+  {
+    id: "fever",
+    name: "Fever Meter",
+    description: "Perfects fill the meter. Fill it for Overdrive: double coins on three orders.",
     unlockLevel: 3,
   },
   {

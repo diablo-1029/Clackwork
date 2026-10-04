@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { emptyFever, type FeverState } from "@/game/economy/fever";
 import { applyXp } from "@/game/progression/levels";
 import type { SaveDataCurrent } from "@/types/save";
 
@@ -12,6 +13,7 @@ interface PlayerState extends PlayerData {
   addXp: (amount: number) => number[];
   setLevel: (level: number) => void;
   setStreak: (streak: number) => void;
+  setFever: (fever: FeverState) => void;
   incrementPerfect: () => void;
   incrementProducts: () => void;
   hydrate: (data: PlayerData) => void;
@@ -24,6 +26,7 @@ export const initialPlayer: PlayerData = {
   perfectStreak: 0,
   totalProductsCompleted: 0,
   totalPerfects: 0,
+  fever: { ...emptyFever },
 };
 
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
@@ -50,6 +53,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
   setLevel: (level) => set({ factoryLevel: Math.max(1, Math.floor(level)), xp: 0 }),
   setStreak: (streak) => set({ perfectStreak: Math.max(0, Math.floor(streak)) }),
+  setFever: (fever) => set({ fever }),
   incrementPerfect: () => set((s) => ({ totalPerfects: s.totalPerfects + 1 })),
   incrementProducts: () => set((s) => ({ totalProductsCompleted: s.totalProductsCompleted + 1 })),
   hydrate: (data) => set({ ...data }),

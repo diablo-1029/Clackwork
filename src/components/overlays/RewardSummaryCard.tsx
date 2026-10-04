@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Meter, Ribbon } from "@/components/ui/Chunky";
 import { useAnimatedNumber } from "@/components/ui/useAnimatedNumber";
 import { Icon } from "@/components/ui/Icon";
+import { economy } from "@/config/economy";
 import { products } from "@/config/products";
 import { getQualityBand } from "@/game/economy/multipliers";
 import { xpRequired } from "@/game/progression/levels";
@@ -145,6 +146,7 @@ export function RewardSummaryCard({ reward, onNext, nextLabel = "Next Order", of
               {reward.streakBonus > 0 && (
                 <span className="text-orange"> · streak +{Math.round(reward.streakBonus * 100)}%</span>
               )}
+              {reward.overdrive && <span className="text-orange"> · Overdrive x{economy.fever.coinMultiplier}</span>}
             </span>
             {Array.from({ length: COIN_TOKENS }, (_, i) => (
               <span key={i} data-coin className="pointer-events-none absolute top-3 left-1/2 -ml-2.5 opacity-0" aria-hidden>

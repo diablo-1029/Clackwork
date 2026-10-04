@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calculateCoins } from "./calculateCoins";
 import { describeUpgradeEffect, getUpgradeCost } from "@/game/progression/upgradeLogic";
+import { applyMachineResult, clampFever, emptyFever, finishOrder, isOverdrive } from "./fever";
 import { boostXp, calculateCompletionXp, calculateMachineXp } from "./calculateXp";
 import {
   applyPerfectAssist,
@@ -211,5 +212,48 @@ describe("upgrade shop", () => {
     expect(describeUpgradeEffect("fastLearner", 2)).toBe("XP +20%");
     expect(describeUpgradeEffect("freshOrders", 1)).toBe("1 reroll per board");
     expect(describeUpgradeEffect("freshOrders", 3)).toBe("3 rerolls per board");
+  });
+});
+
+describe("fever meter", () => {
+  const charged = (charge: number) => ({ charge, ordersLeft: 0 });
+
+  it("gains a charge on a Perfect and loses one on a poor result", () => {
+    expect(applyMachineResult(charged(2), 100)).toEqual({ fever: charged(3), activated: false });
+    expect(applyMachineResult(charged(2), 69)).toEqual({ fever: charged(1), activated: false });
+    expect(applyMachineResult(charged(0), 10)).toEqual({ fever: charged(0), activated: false });
+  });
+
+  it("holds steady on a decent result", () => {
+    expect(applyMachineResult(charged(4), 99).fever).toEqual(charged(4));
+    expect(applyMachineResult(charged(4), 70).fever).toEqual(charged(4));
+  });
+
+  it("starts Overdrive on the eighth charge and empties the meter", () => {
+    const step = applyMachineResult(charged(7), 100);
+    expect(step).toEqual({ fever: { charge: 0, ordersLeft: 3 }, activated: true });
+    expect(isOverdrive(step.fever)).toBe(true);
+  });
+
+  it("does not charge during Overdrive", () => {
+    const active = { charge: 0, ordersLeft: 2 };
+    expect(applyMachineResult(active, 100)).toEqual({ fever: active, activated: false });
+    expect(applyMachineResult(active, 10)).toEqual({ fever: active, activated: false });
+  });
+
+  it("uses one Overdrive order per finished order, then starts again from empty", () => {
+    let fever = { charge: 0, ordersLeft: 3 };
+    fever = finishOrder(fever);
+    fever = finishOrder(fever);
+    expect(isOverdrive(fever)).toBe(true);
+    fever = finishOrder(fever);
+    expect(fever).toEqual(emptyFever);
+    expect(finishOrder(fever)).toEqual(emptyFever);
+    expect(applyMachineResult(fever, 100).fever).toEqual(charged(1));
+  });
+
+  it("clamps a stored meter to its limits", () => {
+    expect(clampFever({ charge: 99, ordersLeft: 0 })).toEqual(charged(7));
+    expect(clampFever({ charge: 5, ordersLeft: 40 })).toEqual({ charge: 0, ordersLeft: 3 });
   });
 });

@@ -9,6 +9,8 @@ export interface MachineFeedback {
   streak: number;
   /** The Streak Shield kept the streak on this result. */
   shielded?: boolean;
+  /** This result filled the fever meter and started Overdrive. */
+  overdriveStarted?: boolean;
 }
 
 interface RunState {

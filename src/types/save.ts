@@ -11,6 +11,8 @@ export interface SaveDataV1 {
     perfectStreak: number;
     totalProductsCompleted: number;
     totalPerfects: number;
+    /** The fever meter and any Overdrive in progress. */
+    fever: { charge: number; ordersLeft: number };
   };
 
   unlocks: {

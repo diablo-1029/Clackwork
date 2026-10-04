@@ -217,4 +217,6 @@ export interface RewardSummary {
   streakBonus: number;
   /** The order's twist and whether its condition was met. */
   twist?: { kind: OrderTwist; achieved: boolean };
+  /** Paid at the Overdrive rate. */
+  overdrive?: boolean;
 }

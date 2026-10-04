@@ -10,6 +10,8 @@ import { OrderBoard } from "@/components/overlays/OrderBoard";
 import { OrderIntro } from "@/components/overlays/OrderIntro";
 import { RewardSummaryCard } from "@/components/overlays/RewardSummaryCard";
 import { Ribbon } from "@/components/ui/Chunky";
+import { isOverdrive } from "@/game/economy/fever";
+import { economy } from "@/config/economy";
 import { Icon } from "@/components/ui/Icon";
 import { machines } from "@/config/machines";
 import { products } from "@/config/products";
@@ -66,6 +68,7 @@ export function ProductionRunController() {
   const upgradeLevels = useProgressionStore((s) => s.upgrades);
   const materialsLevel = upgradeLevels.betterMaterials;
   const streak = usePlayerStore((s) => s.perfectStreak);
+  const overdrive = usePlayerStore((s) => isOverdrive(s.fever));
 
   const [celebrating, setCelebrating] = useState(false);
   /** The run whose summary has been dismissed, leaving only the order board on screen. */
@@ -207,6 +210,7 @@ export function ProductionRunController() {
           upgradeLevels,
           isGolden: run.isGolden,
           twist: run.twist,
+          overdrive,
         });
   const levelUpsPending = pendingLevelUps.length > 0;
 
@@ -219,7 +223,10 @@ export function ProductionRunController() {
     // Slightly after the machine's own sound so the two do not mask each other.
     if (sound) window.setTimeout(() => audio.play(sound), 130);
 
-    if (committed.streak >= 2 && !onboarding.hasSeenStreakIntro) {
+    if (committed.overdriveStarted) {
+      window.setTimeout(() => audio.play("golden"), 320);
+      showToast(`OVERDRIVE! Double coins on ${economy.fever.orders} orders.`);
+    } else if (committed.streak >= 2 && !onboarding.hasSeenStreakIntro) {
       setOnboarding("hasSeenStreakIntro");
       showToast("Perfect streak! Keep it going for bonus coins.");
     }
@@ -242,7 +249,7 @@ export function ProductionRunController() {
 
       <div
         className={`sf-stage relative min-h-0 flex-1 overflow-hidden rounded-3xl transition-shadow duration-300 ${
-          run.isGolden ? "sf-stage-golden" : ""
+          run.isGolden ? "sf-stage-golden" : overdrive ? "sf-stage-overdrive" : ""
         } ${perfectPulse ? "sf-stage-perfect" : ""}`}
         // Result feedback can be tapped away; nothing else on the stage listens for clicks.
         onClick={phase === "RESULT_FEEDBACK" ? () => dispatch("CONTINUE") : undefined}
@@ -260,6 +267,12 @@ export function ProductionRunController() {
             )}
             <h2 className="truncate text-sm font-black tracking-widest uppercase sm:text-base">{product.name}</h2>
             {phase !== "ORDER_INTRO" && <OrderValueChip value={orderValue} />}
+            {overdrive && (
+              <Ribbon tone="orange" className="sf-overdrive-tag px-2 tracking-normal" title="Overdrive: double coins">
+                <Icon name="streak" size={12} fill="currentColor" strokeWidth={0} />
+                x{economy.fever.coinMultiplier}
+              </Ribbon>
+            )}
             {run.twist && (
               <Ribbon tone="orange" className="px-2 tracking-normal" title={describeTwist(run.twist).rule}>
                 {describeTwist(run.twist).name}

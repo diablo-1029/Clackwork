@@ -134,4 +134,18 @@ describe("save service", () => {
     save.upgrades.streakShield = 40;
     expect(migrateSave(save)?.upgrades.streakShield).toBe(3);
   });
+
+  it("loads a save from before the fever meter existed, with the meter empty", () => {
+    const older = JSON.parse(JSON.stringify(createFreshSave()));
+    delete older.player.fever;
+    expect(migrateSave(older)?.player.fever).toEqual({ charge: 0, ordersLeft: 0 });
+  });
+
+  it("keeps an Overdrive in progress across a reload", () => {
+    const storage = fakeStorage();
+    const save = createFreshSave();
+    save.player.fever = { charge: 0, ordersLeft: 2 };
+    writeSave(save, storage);
+    expect(loadSave(storage).data.player.fever).toEqual({ charge: 0, ordersLeft: 2 });
+  });
 });

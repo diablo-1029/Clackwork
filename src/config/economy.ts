@@ -30,6 +30,11 @@ export const economy = {
   /** A non-perfect result at or above this only costs one streak step. */
   streakKeepThreshold: 70,
   goldenMultiplier: 5,
+  /**
+   * The fever meter: `size` Perfects fill it, a result below `poorQuality` drains one,
+   * and a full meter makes the next `orders` finished orders pay `coinMultiplier` times the coins.
+   */
+  fever: { size: 8, orders: 3, coinMultiplier: 2, poorQuality: 70 },
   xp: {
     machineBase: 2,
     qualityDivisor: 20,

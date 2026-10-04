@@ -1,5 +1,6 @@
 import { products } from "@/config/products";
 import { pacing } from "@/config/progression";
+import { applyMachineResult, finishOrder, isOverdrive } from "@/game/economy/fever";
 import { applyPerfectAssist, clampQuality, getRerollCount, getShieldMinQuality } from "@/game/economy/multipliers";
 import { levelUpBonus } from "@/game/progression/levels";
 import { resolveMachineSequence } from "@/game/progression/unlocks";
@@ -209,6 +210,11 @@ export function completeMachine(outcome: MachineOutcome): boolean {
     useRunStore.setState((s) => (s.run ? { run: { ...s.run, shieldUsed: true } } : s));
   }
   if (reward.isPerfect) player.incrementPerfect();
+  // The fever meter only moves once the feature has been introduced.
+  const fever = isFeatureUnlocked("fever", player.factoryLevel)
+    ? applyMachineResult(player.fever, quality)
+    : { fever: player.fever, activated: false };
+  player.setFever(fever.fever);
   grantXp(reward.xp);
 
   const progression = useProgressionStore.getState();
@@ -217,7 +223,14 @@ export function completeMachine(outcome: MachineOutcome): boolean {
 
   useRunStore
     .getState()
-    .setFeedback({ machineId, quality, xp: reward.xp, streak: reward.streak, shielded: reward.shieldUsed });
+    .setFeedback({
+      machineId,
+      quality,
+      xp: reward.xp,
+      streak: reward.streak,
+      shielded: reward.shieldUsed,
+      overdriveStarted: fever.activated,
+    });
   track("machine_completed", { machineId, productId: run.productId, quality, durationMs: outcome.durationMs });
   devLog("Machine", `${machineId} result=${quality}`);
   return true;
@@ -242,6 +255,7 @@ export function finishProduct(): RewardSummary | null {
   const run = useRunStore.getState().run!;
   const product = products[run.productId];
   const player = usePlayerStore.getState();
+  const overdrive = isOverdrive(player.fever);
 
   const reward = resolveProductReward({
     product,
@@ -250,9 +264,11 @@ export function finishProduct(): RewardSummary | null {
     upgradeLevels: useProgressionStore.getState().upgrades,
     isGolden: run.isGolden,
     twist: run.twist,
+    overdrive,
   });
 
   player.addCoins(reward.coins);
+  player.setFever(finishOrder(player.fever));
   player.incrementProducts();
   grantXp(reward.completionXp);
 
@@ -265,6 +281,7 @@ export function finishProduct(): RewardSummary | null {
     xp: reward.machineXp + reward.completionXp,
     streakBonus: reward.streakBonus,
     twist: reward.twist,
+    overdrive,
   };
 
   runStore.setLastReward(summary);

@@ -9,6 +9,7 @@ factory themes.
 - Machines play differently from order to order, with more variants as the factory levels up
 - From Level 3 you pick each order from three cards, some with a twist (Rush, Precision, Training)
 - Six upgrades to spend coins on: more value, Golden orders, easier Perfects, a streak shield, order rerolls and faster XP
+- A fever meter fills on Perfects; a full meter starts Overdrive, which pays double coins on three orders
 - Every level-up pays a coin bonus and announces what it unlocks; the level curve lives in `src/config/economy.ts`
 - Works with mouse, pen and touch
 - Light and dark modes, five factory themes, reduced-motion and sound settings

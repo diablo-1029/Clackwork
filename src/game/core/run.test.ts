@@ -714,3 +714,73 @@ describe("new upgrades", () => {
     expect(rerollsLeft()).toBe(1);
   });
 });
+
+describe("fever mode", () => {
+  /** Plays a whole Wood Block (two machines) at one quality and returns the payout. */
+  const playOrder = (quality: number) => {
+    createOrder();
+    run().dispatch("INTRO_DONE");
+    playMachine(quality);
+    playMachine(quality);
+    return finishProduct();
+  };
+
+  it("stays empty until the feature unlocks at level 3", () => {
+    playOrder(100);
+    expect(player().fever).toEqual({ charge: 0, ordersLeft: 0 });
+  });
+
+  it("fills on Perfects, then pays double on three orders and resets", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 3, fever: { charge: 6, ordersLeft: 0 } });
+
+    // The order that fills the meter is the first of the three.
+    createOrder();
+    run().dispatch("INTRO_DONE");
+    playMachine(100);
+    expect(run().feedback?.overdriveStarted).toBeFalsy();
+    playMachine(100);
+    expect(run().feedback?.overdriveStarted).toBe(true);
+    expect(player().fever).toEqual({ charge: 0, ordersLeft: 3 });
+
+    const first = finishProduct();
+    expect(first?.overdrive).toBe(true);
+    expect(player().fever.ordersLeft).toBe(2);
+
+    const second = playOrder(80);
+    const third = playOrder(80);
+    expect(second?.overdrive).toBe(true);
+    expect(third?.overdrive).toBe(true);
+    expect(player().fever).toEqual({ charge: 0, ordersLeft: 0 });
+
+    // Back to normal: the same order now pays half of what it did in Overdrive.
+    const after = playOrder(80);
+    expect(after?.overdrive).toBe(false);
+    expect(third!.coins).toBe(after!.coins * 2);
+  });
+
+  it("doubles the payout and the projected value alike", () => {
+    const input = {
+      product: products.woodBlock,
+      results: [],
+      streak: 0,
+      upgradeLevels: {},
+      isGolden: false,
+    };
+    expect(projectOrderValue({ ...input, overdrive: true })).toBe(projectOrderValue(input) * 2);
+
+    const results = [
+      { machineId: "cutter" as const, productId: "woodBlock" as const, quality: 100, isPerfect: true, durationMs: 900 },
+      { machineId: "packager" as const, productId: "woodBlock" as const, quality: 100, isPerfect: true, durationMs: 900 },
+    ];
+    const plain = resolveProductReward({ ...input, results });
+    const hot = resolveProductReward({ ...input, results, overdrive: true });
+    expect(hot.coins).toBe(plain.coins * 2);
+    // Overdrive is about coins only.
+    expect(hot.completionXp).toBe(plain.completionXp);
+  });
+
+  it("stacks with a Golden order", () => {
+    const base = { product: products.woodBlock, results: [], streak: 0, upgradeLevels: {} };
+    expect(projectOrderValue({ ...base, isGolden: true, overdrive: true })).toBe(100);
+  });
+});

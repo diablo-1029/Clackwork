@@ -65,6 +65,7 @@ describe("unlocks", () => {
     expect(productsUnlockedAt(3)).toContain("soapBar");
     // The order board arrives with the second product, when there is first something to choose.
     expect(getUnlocksAtLevel(3).map((u) => u.id).sort()).toEqual([
+      "fever",
       "orderBoard",
       "packager:down",
       "soapBar",

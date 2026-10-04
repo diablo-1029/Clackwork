@@ -1,5 +1,6 @@
 import { upgradeList, zeroUpgradeLevels } from "@/config/upgrades";
 import { machinesUnlockedAt, productsUnlockedAt } from "@/game/progression/unlocks";
+import { clampFever, emptyFever } from "@/game/economy/fever";
 import { xpRequired } from "@/game/progression/levels";
 import { SaveEnvelopeSchema, SaveSchemaV1 } from "@/lib/validation/saveSchema";
 import type { SaveDataCurrent, SaveDataV1 } from "@/types/save";
@@ -52,6 +53,7 @@ export function createFreshSave(now: Date = new Date()): SaveDataCurrent {
       perfectStreak: 0,
       totalProductsCompleted: 0,
       totalPerfects: 0,
+      fever: { ...emptyFever },
     },
     unlocks: {
       machines: machinesUnlockedAt(1),
@@ -99,6 +101,7 @@ function migrateV1ToCurrent(save: SaveDataV1): SaveDataCurrent {
       ...save.player,
       coins: Math.floor(save.player.coins),
       xp: Math.min(Math.floor(save.player.xp), xpRequired(level) - 1),
+      fever: clampFever(save.player.fever),
     },
     unlocks: {
       machines: unique([...save.unlocks.machines, ...machinesUnlockedAt(level)]),
