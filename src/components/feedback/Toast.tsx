@@ -24,7 +24,7 @@ export function Toast() {
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
-            className="max-w-md rounded-2xl bg-navy px-4 py-2.5 text-center text-sm font-bold text-white shadow-lg"
+            className="sf-tile sf-tone-deep max-w-md rounded-2xl px-4 py-2.5 text-center text-sm font-bold"
           >
             {toast.message}
           </motion.p>

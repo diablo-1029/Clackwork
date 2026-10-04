@@ -500,6 +500,21 @@ button:disabled {
   }
 }
 
+/* Rays fanning out behind a prize. */
+.sf-rays {
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    color-mix(in srgb, var(--tone) 42%, transparent) 0 12deg,
+    transparent 12deg 24deg
+  );
+  mask-image: radial-gradient(closest-side, #000 30%, transparent 96%);
+  animation: sf-spin 16s linear infinite;
+}
+
+[data-reduced-motion="true"] .sf-rays {
+  animation: none;
+}
+
 /* ---------- Form controls ---------- */
 
 input[type="range"] {

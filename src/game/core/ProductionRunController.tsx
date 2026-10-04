@@ -165,7 +165,7 @@ export function ProductionRunController() {
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-md rounded-3xl bg-surface p-5 text-ink shadow-xl"
+        className="sf-raised w-full max-w-md rounded-3xl p-4 text-ink sm:p-5"
       >
         <OrderBoard offers={offers} onPick={pickOffer} />
       </motion.div>

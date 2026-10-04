@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { audio } from "@/audio/audioManager";
+import type { Tone } from "@/components/ui/Chunky";
 import { Icon } from "@/components/ui/Icon";
 import { products } from "@/config/products";
 import { describeTwist } from "@/game/core/orders";
@@ -11,7 +12,13 @@ import { resolveMachineSequence } from "@/game/progression/unlocks";
 import { useProgressionStore } from "@/stores/progressionStore";
 import type { OrderOffer } from "@/types/game";
 
-/** The cards the player picks the next order from. One tap chooses and starts it. */
+const twistTone: Record<NonNullable<OrderOffer["twist"]>, Tone> = {
+  rush: "orange",
+  precision: "deep",
+  training: "green",
+};
+
+/** The order tickets the player picks the next order from. One tap chooses and starts it. */
 export function OrderBoard({ offers, onPick }: { offers: OrderOffer[]; onPick: (offer: OrderOffer) => void }) {
   const unlockedMachines = useProgressionStore((s) => s.machines);
 
@@ -23,6 +30,7 @@ export function OrderBoard({ offers, onPick }: { offers: OrderOffer[]; onPick: (
           const product = products[offer.productId];
           const steps = resolveMachineSequence(product, unlockedMachines).length;
           const twist = offer.twist ? describeTwist(offer.twist) : null;
+          const tone: Tone = offer.isGolden ? "gold" : offer.twist ? twistTone[offer.twist] : "blue";
           const label = [
             offer.isGolden ? "Golden" : "",
             product.name,
@@ -48,33 +56,42 @@ export function OrderBoard({ offers, onPick }: { offers: OrderOffer[]; onPick: (
                   audio.play("uiClick");
                   onPick(offer);
                 }}
-                className={`relative flex h-full min-h-36 w-full flex-col items-center gap-1 rounded-2xl border-2 bg-surface-2 px-1.5 pt-3 pb-2 text-center transition-transform hover:-translate-y-0.5 active:scale-[0.97] ${
-                  offer.isGolden ? "border-gold" : "border-transparent hover:border-brand"
+                className={`sf-raised relative flex h-full w-full flex-col items-center gap-1 overflow-hidden rounded-2xl pb-2 text-center text-ink transition-transform hover:-translate-y-0.5 active:translate-y-[3px] active:shadow-none ${
+                  offer.isGolden ? "!border-gold" : "hover:!border-brand"
                 }`}
               >
-                {(offer.isGolden || offer.isNew) && (
-                  <span
-                    className={`absolute -top-2 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black ${
-                      offer.isGolden ? "bg-gold text-navy" : "bg-brand-deep text-white"
-                    }`}
-                  >
-                    {offer.isGolden && <Icon name="sparkle" size={10} fill="currentColor" strokeWidth={0} />}
-                    {offer.isGolden ? "GOLDEN" : "NEW"}
-                  </span>
-                )}
-                <ProductIcon material={product.materialProfile} isGolden={offer.isGolden} look={finishedLook(product, offer.isGolden)} size={52} />
-                <span className="text-xs leading-tight font-black uppercase sm:text-sm">{product.name}</span>
-                <span className="flex items-center gap-1 text-xs font-extrabold">
+                {/* The ticket's header strip: what kind of order this is. */}
+                <span
+                  className={`sf-tile sf-tone-${tone} flex h-6 w-full items-center justify-center gap-1 text-[10px] font-black tracking-wider uppercase`}
+                >
+                  {offer.isGolden && <Icon name="sparkle" size={10} fill="currentColor" strokeWidth={0} />}
+                  {offer.isGolden ? "Golden" : twist ? twist.name : offer.isNew ? "New" : "Order"}
+                </span>
+                <span className="mt-1.5 flex h-11 items-center">
+                  <ProductIcon
+                    material={product.materialProfile}
+                    isGolden={offer.isGolden}
+                    look={finishedLook(product, offer.isGolden)}
+                    size={52}
+                  />
+                </span>
+                <span className="px-1 text-xs leading-tight font-black uppercase sm:text-sm">{product.name}</span>
+                <span className="sf-chip sf-tone-gold flex items-center gap-1 rounded-lg px-1.5 text-xs font-black">
                   <Icon name="coin" size={13} />
                   {product.baseValue}
                   {offer.isGolden && <span className="text-orange">x5</span>}
                 </span>
-                <span className="text-[11px] font-bold text-muted">{steps} steps</span>
-                {twist && (
-                  <span className="mt-auto w-full rounded-lg bg-orange/15 px-1 py-1 text-[10px] leading-tight font-extrabold text-orange">
-                    <span className="block uppercase">{twist.name}</span>
-                    <span className="block font-bold">{twist.rule}</span>
+                {/* One pip per machine the order visits. */}
+                <span className="flex flex-col items-center gap-0.5" aria-hidden>
+                  <span className="flex gap-0.5">
+                    {Array.from({ length: steps }, (_, i) => (
+                      <span key={i} className="size-1.5 rounded-full bg-brand" />
+                    ))}
                   </span>
+                  <span className="text-[10px] leading-none font-bold text-muted">{steps} steps</span>
+                </span>
+                {twist && (
+                  <span className="mt-auto px-1.5 text-[10px] leading-tight font-bold text-muted">{twist.rule}</span>
                 )}
               </button>
             </motion.li>

@@ -1,13 +1,15 @@
 "use client";
 
 import { motion, useAnimate } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { audio } from "@/audio/audioManager";
 import { COIN_COUNTER_ID } from "@/components/counters/TopBar";
 import { Button } from "@/components/ui/Button";
+import { Meter, Ribbon } from "@/components/ui/Chunky";
+import { useAnimatedNumber } from "@/components/ui/useAnimatedNumber";
 import { Icon } from "@/components/ui/Icon";
 import { products } from "@/config/products";
-import { getQualityLabel } from "@/game/economy/multipliers";
+import { getQualityBand } from "@/game/economy/multipliers";
 import { xpRequired } from "@/game/progression/levels";
 import { getNextUnlock } from "@/game/progression/unlocks";
 import { finishedLook } from "@/game/products/productLook";
@@ -31,6 +33,12 @@ interface RewardSummaryCardProps {
   onPick?: (offer: OrderOffer) => void;
 }
 
+/** One to three stars, from the same quality bands that set the coin multiplier. */
+function starCount(tier: string): number {
+  if (tier === "perfect" || tier === "excellent") return 3;
+  return tier === "good" ? 2 : 1;
+}
+
 /** What the twist did to this order, in a few words. */
 function twistOutcome(twist: NonNullable<RewardSummary["twist"]>): string {
   const { name, rule } = describeTwist(twist.kind);
@@ -46,6 +54,17 @@ export function RewardSummaryCard({ reward, onNext, nextLabel = "Next Order", of
   const reducedMotion = useSettingsStore((s) => s.reducedMotion);
   const [scope, animate] = useAnimate<HTMLDivElement>();
   const nextUnlock = getNextUnlock(level);
+  const band = getQualityBand(reward.quality);
+  const stars = starCount(band.tier);
+  // The totals start at zero and tick up once the card has landed.
+  const [counting, setCounting] = useState(false);
+  const shownCoins = useAnimatedNumber(counting ? reward.coins : 0, 600);
+  const shownXp = useAnimatedNumber(counting ? reward.xp : 0, 600);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setCounting(true), 180);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Coins arc from the card to the counter in the top bar.
   useEffect(() => {
@@ -75,26 +94,51 @@ export function RewardSummaryCard({ reward, onNext, nextLabel = "Next Order", of
         initial={{ scale: 0.85, opacity: 0, y: 14 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 420, damping: 24 }}
-        className={`relative flex max-h-full w-full flex-col items-center gap-2 overflow-y-auto rounded-3xl bg-surface p-5 text-ink shadow-xl sm:p-6 ${
+        className={`sf-raised relative flex max-h-full w-full flex-col items-center gap-2 overflow-x-hidden overflow-y-auto rounded-3xl p-4 text-ink sm:p-5 ${
           offers ? "max-w-md" : "max-w-sm"
-        } ${
-          reward.isGolden ? "ring-4 ring-gold" : ""
-        }`}
+        } ${reward.isGolden ? "!border-gold ring-4 ring-gold" : ""}`}
         role="status"
       >
-        <ProductIcon material={product.materialProfile} isGolden={reward.isGolden} look={finishedLook(product, reward.isGolden)} size={76} />
-        <h2 className="text-center text-xl font-black tracking-wide uppercase">
+        <Ribbon tone={band.tier === "perfect" ? "gold" : "deep"} className="text-sm">
+          {band.label} · {reward.quality}%
+        </Ribbon>
+
+        {/* The finished product on show, with rays behind it. */}
+        <div className="relative flex h-16 w-full items-center justify-center">
+          <span className={`sf-rays absolute size-40 ${reward.isGolden ? "sf-tone-gold" : "sf-tone-blue"}`} aria-hidden />
+          <span className="relative">
+            <ProductIcon
+              material={product.materialProfile}
+              isGolden={reward.isGolden}
+              look={finishedLook(product, reward.isGolden)}
+              size={76}
+            />
+          </span>
+        </div>
+
+        <div className="relative flex gap-1" role="img" aria-label={`${stars} of 3 stars`}>
+          {[0, 1, 2].map((i) => (
+            <motion.span
+              key={i}
+              initial={{ scale: 0, rotate: -30 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 420, damping: 14, delay: 0.15 + i * 0.1 }}
+              className={i < stars ? "text-gold" : "text-line"}
+            >
+              <Icon name="xp" size={i === 1 ? 30 : 24} fill="currentColor" stroke="var(--sf-orange-500)" strokeWidth={i < stars ? 1.2 : 0} />
+            </motion.span>
+          ))}
+        </div>
+
+        <h2 className="relative text-center text-lg leading-tight font-black tracking-wide uppercase">
           {reward.isGolden ? "Golden " : ""}
           {product.name} complete
         </h2>
-        <p className="text-sm font-extrabold text-muted">
-          Total Quality: <span className="text-ink">{reward.quality}%</span> · {getQualityLabel(reward.quality)}
-        </p>
 
         <div className="mt-1 flex w-full gap-2">
-          <div ref={scope} className="relative flex flex-1 flex-col items-center rounded-2xl bg-surface-2 py-2.5">
+          <div ref={scope} className="sf-inset relative flex flex-1 flex-col items-center rounded-2xl py-2.5">
             <span className="flex items-center gap-1.5 text-2xl font-black tabular-nums">
-              <Icon name="coin" size={22} />+{reward.coins}
+              <Icon name="coin" size={22} />+{shownCoins}
             </span>
             <span className="text-xs font-extrabold text-muted">
               Coins
@@ -108,19 +152,22 @@ export function RewardSummaryCard({ reward, onNext, nextLabel = "Next Order", of
               </span>
             ))}
           </div>
-          <div className="flex flex-1 flex-col items-center rounded-2xl bg-surface-2 py-2.5">
+          <div className="sf-inset flex flex-1 flex-col items-center rounded-2xl py-2.5">
             <span className="flex items-center gap-1.5 text-2xl font-black tabular-nums">
-              <Icon name="xp" size={20} fill="currentColor" strokeWidth={0} className="text-brand" />+{reward.xp}
+              <Icon name="xp" size={20} fill="currentColor" strokeWidth={0} className="text-brand" />+{shownXp}
             </span>
             <span className="text-xs font-extrabold text-muted">XP</span>
           </div>
         </div>
 
         {nextUnlock && (
-          <p className="text-center text-xs font-bold text-muted">
-            {xpRequired(level) - xp} XP to Level {level + 1}
-            {nextUnlock.level === level + 1 ? ` · unlocks ${nextUnlock.name}` : ""}
-          </p>
+          <div className="w-full">
+            <Meter value={xp} max={xpRequired(level)} label={`XP to Level ${level + 1}`} className="h-3.5" />
+            <p className="mt-1 text-center text-xs font-bold text-muted">
+              {xpRequired(level) - xp} XP to Level {level + 1}
+              {nextUnlock.level === level + 1 ? ` · unlocks ${nextUnlock.name}` : ""}
+            </p>
+          </div>
         )}
 
         {reward.twist && (
@@ -130,7 +177,7 @@ export function RewardSummaryCard({ reward, onNext, nextLabel = "Next Order", of
         )}
 
         {offers && onPick ? (
-          <div className="mt-2 w-full border-t border-line pt-3">
+          <div className="mt-1 w-full border-t-2 border-line pt-2.5">
             <OrderBoard offers={offers} onPick={onPick} />
           </div>
         ) : (

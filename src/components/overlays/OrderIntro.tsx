@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Fragment } from "react";
+import { Ribbon } from "@/components/ui/Chunky";
 import { Icon } from "@/components/ui/Icon";
 import { products } from "@/config/products";
 import { finishedLook } from "@/game/products/productLook";
@@ -24,15 +25,17 @@ export function OrderIntro({ run, onSkip }: { run: ProductionRun; onSkip: () => 
         initial={{ scale: 0.85, opacity: 0, y: 14 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 420, damping: 24 }}
-        className={`flex w-full max-w-sm flex-col items-center gap-2 rounded-3xl bg-surface p-6 text-ink shadow-xl ${
-          run.isGolden ? "ring-4 ring-gold" : ""
+        className={`sf-raised flex w-full max-w-sm flex-col items-center gap-2 rounded-3xl p-6 text-ink ${
+          run.isGolden ? "!border-gold ring-4 ring-gold" : ""
         }`}
       >
-        {run.isGolden && (
-          <span className="flex items-center gap-1.5 rounded-full bg-gold px-3 py-1 text-sm font-black text-navy">
+        {run.isGolden ? (
+          <Ribbon tone="gold" className="text-sm">
             <Icon name="sparkle" size={15} fill="currentColor" strokeWidth={0} />
-            GOLDEN PRODUCT!
-          </span>
+            Golden product!
+          </Ribbon>
+        ) : (
+          <Ribbon tone="deep">New order</Ribbon>
         )}
         <ProductIcon material={product.materialProfile} isGolden={run.isGolden} look={finishedLook(product, run.isGolden)} size={96} />
         <h2 className="text-2xl font-black tracking-wide uppercase">{product.name}</h2>
@@ -44,7 +47,10 @@ export function OrderIntro({ run, onSkip }: { run: ProductionRun; onSkip: () => 
           {run.machineSequence.map((id, index) => (
             <Fragment key={`${id}-${index}`}>
               {index > 0 && <Icon name="arrowRight" size={14} className="text-muted" />}
-              <span className="rounded-lg bg-surface-2 px-2 py-1">{stepName(product, run.machineSequence, index)}</span>
+              <span className="sf-chip sf-tone-blue flex items-center gap-1 rounded-lg px-2 py-1">
+                <Icon name={id} size={14} />
+                {stepName(product, run.machineSequence, index)}
+              </span>
             </Fragment>
           ))}
         </p>
