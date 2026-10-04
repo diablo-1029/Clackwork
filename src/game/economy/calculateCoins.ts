@@ -1,4 +1,4 @@
-import type { UpgradeId } from "@/types/game";
+import type { UpgradeLevels } from "@/types/game";
 import {
   getGoldenMultiplier,
   getProductValueMultiplier,
@@ -10,7 +10,7 @@ export interface CoinInput {
   baseValue: number;
   quality: number;
   streak: number;
-  upgradeLevels: Record<UpgradeId, number>;
+  upgradeLevels: UpgradeLevels;
   isGolden: boolean;
 }
 

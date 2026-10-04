@@ -18,6 +18,7 @@ export type IconName =
   | "check"
   | "arrowRight"
   | "sparkle"
+  | "reroll"
   | "cutter"
   | "stamper"
   | "polisher"
@@ -97,6 +98,7 @@ const paths: Record<IconName, ReactNode> = {
   check: <path d="m5 12.5 4.5 4.500L19 7.5" />,
   arrowRight: <path d="M5 12h14m0 0-5-5m5 5-5 5" />,
   sparkle: <path d="M12 3l1.8 5.700L19.5 10.500l-5.7 1.800L12 18l-1.8-5.700L4.5 10.500l5.7-1.800L12 3Z" />,
+  reroll: <path d="M4 11a8 8 0 0 1 14-4.500L20 8.500M20 4v4.500h-4.500M20 13a8 8 0 0 1-14 4.500L4 15.500M4 20v-4.500h4.500" />,
   cutter: (
     <>
       <circle cx="12" cy="12" r="6" />

@@ -6,10 +6,13 @@ import type { Tone } from "@/components/ui/Chunky";
 import { Icon } from "@/components/ui/Icon";
 import { products } from "@/config/products";
 import { describeTwist } from "@/game/core/orders";
+import { rerollOffers } from "@/game/core/runActions";
+import { getRerollCount } from "@/game/economy/multipliers";
 import { finishedLook } from "@/game/products/productLook";
 import { ProductIcon } from "@/game/products/ProductRenderer";
 import { resolveMachineSequence } from "@/game/progression/unlocks";
 import { useProgressionStore } from "@/stores/progressionStore";
+import { useUiStore } from "@/stores/uiStore";
 import type { OrderOffer } from "@/types/game";
 
 const twistTone: Record<NonNullable<OrderOffer["twist"]>, Tone> = {
@@ -21,6 +24,9 @@ const twistTone: Record<NonNullable<OrderOffer["twist"]>, Tone> = {
 /** The order tickets the player picks the next order from. One tap chooses and starts it. */
 export function OrderBoard({ offers, onPick }: { offers: OrderOffer[]; onPick: (offer: OrderOffer) => void }) {
   const unlockedMachines = useProgressionStore((s) => s.machines);
+  // Fresh Orders: the button only exists once the upgrade is owned.
+  const rerolls = useProgressionStore((s) => getRerollCount(s.upgrades));
+  const rerollsLeft = Math.max(0, rerolls - useUiStore((s) => s.rerollsUsed));
 
   return (
     <div className="w-full">
@@ -98,6 +104,20 @@ export function OrderBoard({ offers, onPick }: { offers: OrderOffer[]; onPick: (
           );
         })}
       </ul>
+      {rerolls > 0 && (
+        <button
+          type="button"
+          disabled={rerollsLeft === 0}
+          onClick={() => {
+            if (rerollOffers()) audio.play("uiClick");
+          }}
+          className="sf-chip sf-tone-blue mx-auto mt-3 flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-black transition-transform active:translate-y-0.5 disabled:opacity-50"
+        >
+          <Icon name="reroll" size={16} />
+          Reroll
+          <span className="font-bold text-muted">{rerollsLeft} left</span>
+        </button>
+      )}
     </div>
   );
 }

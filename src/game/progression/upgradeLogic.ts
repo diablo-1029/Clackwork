@@ -31,9 +31,24 @@ export function canPurchaseUpgrade(
 /** Human-readable effect at a given level, e.g. "Product value +20%". */
 export function describeUpgradeEffect(id: UpgradeId, level: number): string {
   const effect = upgrades[id].effect;
-  if (effect.kind === "productValue") {
-    return `Product value +${Math.round(level * effect.perLevel * 100)}%`;
+  switch (effect.kind) {
+    case "productValue":
+      return `Product value +${Math.round(level * effect.perLevel * 100)}%`;
+    case "goldenChance": {
+      const chance = effect.chanceByLevel[Math.min(level, effect.chanceByLevel.length - 1)] ?? 0;
+      return `Golden chance ${Math.round(chance * 100)}%`;
+    }
+    case "perfectAssist":
+      return level > 0 ? `Perfect from ${100 - level * effect.windowPerLevel}%` : "Perfect at 100% only";
+    case "streakShield":
+      return level > 0
+        ? `Keeps streak at ${effect.minQualityByLevel[Math.min(level, effect.minQualityByLevel.length - 1)]}%+`
+        : "No shield";
+    case "xpBoost":
+      return `XP +${Math.round(level * effect.perLevel * 100)}%`;
+    case "rerolls": {
+      const count = level * effect.perLevel;
+      return count === 1 ? "1 reroll per board" : `${count} rerolls per board`;
+    }
   }
-  const chance = effect.chanceByLevel[Math.min(level, effect.chanceByLevel.length - 1)] ?? 0;
-  return `Golden chance ${Math.round(chance * 100)}%`;
 }

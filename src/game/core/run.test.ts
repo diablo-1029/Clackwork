@@ -17,6 +17,8 @@ import {
   finishProduct,
   grantXp,
   isOrderBoardUnlocked,
+  rerollOffers,
+  rerollsLeft,
 } from "./runActions";
 import { transition } from "./runStateMachine";
 
@@ -612,7 +614,7 @@ describe("purchases", () => {
     expect(useProgressionStore.getState().purchaseUpgrade("goldenTouch")).toMatchObject({ ok: false, reason: "locked" });
 
     usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 20, coins: 1e9 });
-    useProgressionStore.setState({ upgrades: { betterMaterials: 10, goldenTouch: 0 } });
+    useProgressionStore.setState({ upgrades: { ...useProgressionStore.getState().upgrades, betterMaterials: 10 } });
     expect(useProgressionStore.getState().purchaseUpgrade("betterMaterials")).toMatchObject({ ok: false, reason: "maxed" });
   });
 
@@ -620,5 +622,95 @@ describe("purchases", () => {
     usePlayerStore.getState().hydrate({ ...player(), coins: 5 });
     expect(player().spendCoins(6)).toBe(false);
     expect(player().coins).toBe(5);
+  });
+});
+
+describe("new upgrades", () => {
+  const own = (levels: Partial<ReturnType<typeof useProgressionStore.getState>["upgrades"]>) =>
+    useProgressionStore.setState({ upgrades: { ...useProgressionStore.getState().upgrades, ...levels } });
+
+  it("Steady Hands records a near-Perfect as Perfect, streak and all", () => {
+    own({ steadyHands: 3 });
+    createOrder();
+    run().dispatch("INTRO_DONE");
+    playMachine(97);
+    expect(run().run?.results[0]).toMatchObject({ quality: 100, isPerfect: true });
+    expect(player().perfectStreak).toBe(1);
+    expect(player().totalPerfects).toBe(1);
+  });
+
+  it("Streak Shield saves the streak once per order, then is spent", () => {
+    own({ streakShield: 2 });
+    usePlayerStore.getState().hydrate({ ...player(), perfectStreak: 5 });
+    createOrder();
+    run().dispatch("INTRO_DONE");
+
+    playMachine(90);
+    expect(player().perfectStreak).toBe(5);
+    expect(run().run?.shieldUsed).toBe(true);
+
+    playMachine(90);
+    expect(player().perfectStreak).toBe(4);
+  });
+
+  it("Streak Shield is ready again on the next order", () => {
+    own({ streakShield: 2 });
+    usePlayerStore.getState().hydrate({ ...player(), perfectStreak: 5 });
+    createOrder();
+    run().dispatch("INTRO_DONE");
+    playMachine(90);
+    playMachine(100);
+    finishProduct();
+
+    createOrder();
+    expect(run().run?.shieldUsed).toBeFalsy();
+    run().dispatch("INTRO_DONE");
+    playMachine(90);
+    expect(player().perfectStreak).toBe(6);
+  });
+
+  it("Fast Learner pays more XP, and the summary matches what was paid", () => {
+    own({ fastLearner: 5 });
+    createOrder();
+    run().dispatch("INTRO_DONE");
+    playMachine(100);
+    playMachine(100);
+    const summary = finishProduct();
+    // Machines 7 → 11 each (×1.5, rounded), completion 7 → 11.
+    expect(summary?.xp).toBe(33);
+    expect(player().xp).toBe(33);
+  });
+
+  it("Fresh Orders rerolls the board until the rerolls run out", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 10 });
+    useProgressionStore.getState().syncUnlocks(10);
+    useUiStore.setState({ queuedProducts: [] });
+
+    ensureOffers();
+    expect(rerollsLeft()).toBe(0);
+    expect(rerollOffers()).toBe(false);
+
+    own({ freshOrders: 2 });
+    const first = useUiStore.getState().offers.map((offer) => offer.id);
+    expect(rerollsLeft()).toBe(2);
+    expect(rerollOffers()).toBe(true);
+    const second = useUiStore.getState().offers.map((offer) => offer.id);
+    expect(second).toHaveLength(3);
+    expect(second).not.toEqual(first);
+    expect(rerollOffers()).toBe(true);
+    expect(rerollsLeft()).toBe(0);
+    expect(rerollOffers()).toBe(false);
+  });
+
+  it("a new board starts with its rerolls back", () => {
+    usePlayerStore.getState().hydrate({ ...player(), factoryLevel: 10 });
+    own({ freshOrders: 1 });
+    ensureOffers();
+    rerollOffers();
+    expect(rerollsLeft()).toBe(0);
+
+    createOrder(useUiStore.getState().offers[0]);
+    ensureOffers();
+    expect(rerollsLeft()).toBe(1);
   });
 });

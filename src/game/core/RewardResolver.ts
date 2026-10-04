@@ -1,14 +1,15 @@
 import { calculateCoins } from "@/game/economy/calculateCoins";
-import { calculateCompletionXp, calculateMachineXp } from "@/game/economy/calculateXp";
+import { boostXp, calculateCompletionXp, calculateMachineXp } from "@/game/economy/calculateXp";
 import {
   clampQuality,
   getGoldenMultiplier,
   getProductValueMultiplier,
   getStreakBonus,
   getStreakMultiplier,
-  nextStreak,
+  getXpMultiplier,
+  resolveStreak,
 } from "@/game/economy/multipliers";
-import type { MachineResult, OrderTwist, ProductDefinition, UpgradeId } from "@/types/game";
+import type { MachineResult, OrderTwist, ProductDefinition, UpgradeLevels } from "@/types/game";
 import { parTimeMs, resolveTwist } from "./orders";
 
 /** Simple average of the machine scores (MVP has no per-machine weights). */
@@ -22,14 +23,30 @@ export interface MachineReward {
   xp: number;
   streak: number;
   isPerfect: boolean;
+  /** True when the Streak Shield kept the streak on this result. */
+  shieldUsed: boolean;
 }
 
-export function resolveMachineReward(quality: number, currentStreak: number, xpScale = 1): MachineReward {
+export interface MachineRewardOptions {
+  upgradeLevels?: UpgradeLevels;
+  /** The lowest quality the Streak Shield covers on this result; null when it is spent or not owned. */
+  shieldMinQuality?: number | null;
+}
+
+/** `quality` is the committed result, after any Steady Hands rounding. */
+export function resolveMachineReward(
+  quality: number,
+  currentStreak: number,
+  xpScale = 1,
+  { upgradeLevels = {}, shieldMinQuality = null }: MachineRewardOptions = {},
+): MachineReward {
   const q = clampQuality(quality);
+  const streak = resolveStreak(currentStreak, q, shieldMinQuality);
   return {
-    xp: calculateMachineXp(q, xpScale),
-    streak: nextStreak(currentStreak, q),
+    xp: boostXp(calculateMachineXp(q, xpScale), getXpMultiplier(upgradeLevels)),
+    streak: streak.streak,
     isPerfect: q >= 100,
+    shieldUsed: streak.shieldUsed,
   };
 }
 
@@ -37,7 +54,7 @@ export interface ProductRewardInput {
   product: ProductDefinition;
   results: MachineResult[];
   streak: number;
-  upgradeLevels: Record<UpgradeId, number>;
+  upgradeLevels: UpgradeLevels;
   isGolden: boolean;
   twist?: OrderTwist;
 }
@@ -71,11 +88,12 @@ export function resolveProductReward(input: ProductRewardInput): ProductReward {
     upgradeLevels: input.upgradeLevels,
     isGolden: input.isGolden,
   });
+  const xpMultiplier = getXpMultiplier(input.upgradeLevels);
   const machineXp = input.results.reduce(
-    (total, r) => total + calculateMachineXp(r.quality, input.product.stepXpScale),
+    (total, r) => total + boostXp(calculateMachineXp(r.quality, input.product.stepXpScale), xpMultiplier),
     0,
   );
-  const completionXp = calculateCompletionXp(input.results.length, input.isGolden);
+  const completionXp = boostXp(calculateCompletionXp(input.results.length, input.isGolden), xpMultiplier);
 
   return {
     quality,

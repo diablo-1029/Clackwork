@@ -69,11 +69,12 @@ describe("unlocks", () => {
       "packager:down",
       "soapBar",
       "stamper",
+      "steadyHands",
     ]);
   });
 
   it("unlocks the Polisher and Golden Touch at level 5", () => {
-    expect(getUnlocksAtLevel(5).map((u) => u.id).sort()).toEqual(["goldenTouch", "polisher"]);
+    expect(getUnlocksAtLevel(5).map((u) => u.id).sort()).toEqual(["freshOrders", "goldenTouch", "polisher"]);
   });
 
   it("unlocks the Paint Booth and Ceramic Coaster at level 8", () => {

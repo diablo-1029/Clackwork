@@ -36,6 +36,11 @@ export const SaveSchemaV1 = z.object({
   upgrades: z.object({
     betterMaterials: count,
     goldenTouch: count,
+    // Added after the first release: saves from before then load with these at 0.
+    steadyHands: count.default(0),
+    streakShield: count.default(0),
+    fastLearner: count.default(0),
+    freshOrders: count.default(0),
   }),
 
   settings: z.object({

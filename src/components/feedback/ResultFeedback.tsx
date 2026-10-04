@@ -35,6 +35,7 @@ export function ResultFeedback({ feedback }: { feedback: MachineFeedback }) {
       <span className="flex flex-col text-left text-sm leading-tight font-black">
         <span>+{feedback.xp} XP</span>
         {perfect && feedback.streak >= 2 && <span className="text-orange">PERFECT x{feedback.streak}</span>}
+        {feedback.shielded && <span className="text-brand-deep">Shield kept x{feedback.streak}</span>}
       </span>
     </motion.div>
   );

@@ -15,7 +15,16 @@ export type ProductId =
   | "goldIngot"
   | "toyRobot";
 
-export type UpgradeId = "betterMaterials" | "goldenTouch";
+export type UpgradeId =
+  | "betterMaterials"
+  | "goldenTouch"
+  | "steadyHands"
+  | "streakShield"
+  | "fastLearner"
+  | "freshOrders";
+
+/** Upgrade levels as rules read them: an upgrade that is missing counts as level 0. */
+export type UpgradeLevels = Partial<Record<UpgradeId, number>>;
 
 export type ThemeId =
   | "defaultFactory"
@@ -125,7 +134,14 @@ export interface ProductDefinition {
 
 export type UpgradeEffect =
   | { kind: "productValue"; perLevel: number }
-  | { kind: "goldenChance"; chanceByLevel: number[] };
+  | { kind: "goldenChance"; chanceByLevel: number[] }
+  /** Results within `windowPerLevel` × level of 100 count as Perfect. */
+  | { kind: "perfectAssist"; windowPerLevel: number }
+  /** Once per order, a result at or above the level's quality keeps the streak. Index = upgrade level. */
+  | { kind: "streakShield"; minQualityByLevel: number[] }
+  | { kind: "xpBoost"; perLevel: number }
+  /** Rerolls of the order board, per board. */
+  | { kind: "rerolls"; perLevel: number };
 
 export interface UpgradeDefinition {
   id: UpgradeId;
@@ -185,6 +201,8 @@ export interface ProductionRun {
   /** Set exactly once, when the product reward has been paid out. */
   rewardCommitted: boolean;
   twist?: OrderTwist;
+  /** The Streak Shield works once per order. */
+  shieldUsed?: boolean;
 }
 
 export type QualityTier = "perfect" | "excellent" | "good" | "low";

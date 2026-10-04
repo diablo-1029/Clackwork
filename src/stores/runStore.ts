@@ -7,6 +7,8 @@ export interface MachineFeedback {
   quality: number;
   xp: number;
   streak: number;
+  /** The Streak Shield kept the streak on this result. */
+  shielded?: boolean;
 }
 
 interface RunState {

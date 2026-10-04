@@ -1,3 +1,4 @@
+import { zeroUpgradeLevels } from "@/config/upgrades";
 import { create } from "zustand";
 import { themes } from "@/config/themes";
 import { machinesUnlockedAt, productsUnlockedAt } from "@/game/progression/unlocks";
@@ -48,7 +49,7 @@ export const useProgressionStore = create<ProgressionState>()((set, get) => ({
   machines: machinesUnlockedAt(1),
   products: productsUnlockedAt(1),
   themes: ["defaultFactory"],
-  upgrades: { betterMaterials: 0, goldenTouch: 0 },
+  upgrades: zeroUpgradeLevels(),
   onboarding: initialOnboarding,
 
   unlockMachine: (id) => set((s) => ({ machines: addUnique(s.machines, id) })),

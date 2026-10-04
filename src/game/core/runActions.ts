@@ -1,6 +1,6 @@
 import { products } from "@/config/products";
 import { pacing } from "@/config/progression";
-import { clampQuality } from "@/game/economy/multipliers";
+import { applyPerfectAssist, clampQuality, getRerollCount, getShieldMinQuality } from "@/game/economy/multipliers";
 import { levelUpBonus } from "@/game/progression/levels";
 import { resolveMachineSequence } from "@/game/progression/unlocks";
 import { devLog, track } from "@/lib/analytics";
@@ -83,6 +83,31 @@ export function ensureOffers(): OrderOffer[] {
   return offers;
 }
 
+/** Rerolls left on the current board (Fresh Orders upgrade). */
+export function rerollsLeft(): number {
+  return Math.max(0, getRerollCount(useProgressionStore.getState().upgrades) - useUiStore.getState().rerollsUsed);
+}
+
+/** Swaps the board for three new tickets. A newly unlocked product keeps its place. */
+export function rerollOffers(): boolean {
+  const ui = useUiStore.getState();
+  if (ui.offers.length === 0 || rerollsLeft() <= 0) return false;
+
+  const progression = useProgressionStore.getState();
+  const player = usePlayerStore.getState();
+  ui.setOffers(
+    generateOffers({
+      unlocked: progression.products,
+      level: player.factoryLevel,
+      goldenTouchLevel: progression.upgrades.goldenTouch,
+      productsCompleted: player.totalProductsCompleted,
+      forced: ui.offers.filter((offer) => offer.isNew).map((offer) => offer.productId),
+    }),
+    true,
+  );
+  return true;
+}
+
 /**
  * Starts the next order: the chosen card if there is one, otherwise an order
  * picked for the player. A run that is still in progress is never replaced.
@@ -160,7 +185,9 @@ export function completeMachine(outcome: MachineOutcome): boolean {
 
   const machineId = run.machineSequence[run.currentMachineIndex];
   const override = useUiStore.getState().debug.qualityOverride;
-  const quality = clampQuality(override ?? outcome.quality);
+  const upgradeLevels = useProgressionStore.getState().upgrades;
+  // Steady Hands rounds a near-Perfect up before the result is recorded, so everything downstream agrees.
+  const quality = applyPerfectAssist(clampQuality(override ?? outcome.quality), upgradeLevels);
 
   const committed = useRunStore.getState().commitMachineResult({
     machineId,
@@ -173,8 +200,14 @@ export function completeMachine(outcome: MachineOutcome): boolean {
   if (!committed) return false;
 
   const player = usePlayerStore.getState();
-  const reward = resolveMachineReward(quality, player.perfectStreak, products[run.productId]?.stepXpScale);
+  const reward = resolveMachineReward(quality, player.perfectStreak, products[run.productId]?.stepXpScale, {
+    upgradeLevels,
+    shieldMinQuality: run.shieldUsed ? null : getShieldMinQuality(upgradeLevels),
+  });
   player.setStreak(reward.streak);
+  if (reward.shieldUsed) {
+    useRunStore.setState((s) => (s.run ? { run: { ...s.run, shieldUsed: true } } : s));
+  }
   if (reward.isPerfect) player.incrementPerfect();
   grantXp(reward.xp);
 
@@ -182,7 +215,9 @@ export function completeMachine(outcome: MachineOutcome): boolean {
   if (machineId === "cutter") progression.setOnboarding("hasCompletedFirstCut");
   if (machineId === "packager") progression.setOnboarding("hasCompletedFirstPackage");
 
-  useRunStore.getState().setFeedback({ machineId, quality, xp: reward.xp, streak: reward.streak });
+  useRunStore
+    .getState()
+    .setFeedback({ machineId, quality, xp: reward.xp, streak: reward.streak, shielded: reward.shieldUsed });
   track("machine_completed", { machineId, productId: run.productId, quality, durationMs: outcome.durationMs });
   devLog("Machine", `${machineId} result=${quality}`);
   return true;

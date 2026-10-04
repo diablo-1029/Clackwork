@@ -1,4 +1,4 @@
-import { upgrades } from "@/config/upgrades";
+import { upgradeList, zeroUpgradeLevels } from "@/config/upgrades";
 import { machinesUnlockedAt, productsUnlockedAt } from "@/game/progression/unlocks";
 import { xpRequired } from "@/game/progression/levels";
 import { SaveEnvelopeSchema, SaveSchemaV1 } from "@/lib/validation/saveSchema";
@@ -58,7 +58,7 @@ export function createFreshSave(now: Date = new Date()): SaveDataCurrent {
       products: productsUnlockedAt(1),
       themes: ["defaultFactory"],
     },
-    upgrades: { betterMaterials: 0, goldenTouch: 0 },
+    upgrades: zeroUpgradeLevels(),
     settings: {
       themeMode: "system",
       selectedFactoryTheme: "defaultFactory",
@@ -105,10 +105,10 @@ function migrateV1ToCurrent(save: SaveDataV1): SaveDataCurrent {
       products: unique([...save.unlocks.products, ...productsUnlockedAt(level)]),
       themes: unique(["defaultFactory" as const, ...save.unlocks.themes]),
     },
-    upgrades: {
-      betterMaterials: Math.min(save.upgrades.betterMaterials, upgrades.betterMaterials.maxLevel),
-      goldenTouch: Math.min(save.upgrades.goldenTouch, upgrades.goldenTouch.maxLevel),
-    },
+    upgrades: upgradeList.reduce(
+      (levels, upgrade) => ({ ...levels, [upgrade.id]: Math.min(save.upgrades[upgrade.id] ?? 0, upgrade.maxLevel) }),
+      zeroUpgradeLevels(),
+    ),
     settings: {
       ...save.settings,
       selectedFactoryTheme:

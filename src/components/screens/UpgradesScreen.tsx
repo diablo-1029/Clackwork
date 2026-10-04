@@ -16,6 +16,10 @@ import { LockedTag, ScreenFrame } from "./ScreenFrame";
 const upgradeArt: Record<UpgradeId, { icon: IconName; tone: Tone }> = {
   betterMaterials: { icon: "product", tone: "blue" },
   goldenTouch: { icon: "sparkle", tone: "gold" },
+  steadyHands: { icon: "check", tone: "green" },
+  streakShield: { icon: "streak", tone: "orange" },
+  freshOrders: { icon: "reroll", tone: "deep" },
+  fastLearner: { icon: "xp", tone: "deep" },
 };
 
 export function UpgradesScreen() {

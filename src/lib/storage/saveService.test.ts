@@ -114,4 +114,24 @@ describe("save service", () => {
     expect(loadSave(throwing).status).toBe("unavailable");
     expect(writeSave(createFreshSave(), throwing)).toBe(false);
   });
+
+  it("loads a save from before the newer upgrades existed, with them at level 0", () => {
+    const older = JSON.parse(JSON.stringify(createFreshSave()));
+    older.upgrades = { betterMaterials: 3, goldenTouch: 1 };
+    const migrated = migrateSave(older)!;
+    expect(migrated.upgrades).toEqual({
+      betterMaterials: 3,
+      goldenTouch: 1,
+      steadyHands: 0,
+      streakShield: 0,
+      freshOrders: 0,
+      fastLearner: 0,
+    });
+  });
+
+  it("clamps an upgrade level above its maximum", () => {
+    const save = createFreshSave();
+    save.upgrades.streakShield = 40;
+    expect(migrateSave(save)?.upgrades.streakShield).toBe(3);
+  });
 });

@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { calculateCoins } from "./calculateCoins";
-import { calculateCompletionXp, calculateMachineXp } from "./calculateXp";
+import { describeUpgradeEffect, getUpgradeCost } from "@/game/progression/upgradeLogic";
+import { boostXp, calculateCompletionXp, calculateMachineXp } from "./calculateXp";
 import {
+  applyPerfectAssist,
   getGoldenChance,
   getQualityLabel,
   getQualityMultiplier,
+  getRerollCount,
+  getShieldMinQuality,
   getStreakBonus,
+  getXpMultiplier,
   nextStreak,
+  resolveStreak,
 } from "./multipliers";
 
 const noUpgrades = { betterMaterials: 0, goldenTouch: 0 };
@@ -123,5 +129,87 @@ describe("golden chance", () => {
     [9, 0.06],
   ])("level %i → %f", (level, chance) => {
     expect(getGoldenChance(level)).toBe(chance);
+  });
+});
+
+describe("steady hands", () => {
+  it("does nothing without the upgrade", () => {
+    expect(applyPerfectAssist(99, {})).toBe(99);
+    expect(applyPerfectAssist(100, {})).toBe(100);
+  });
+
+  it.each([
+    [1, 99, 100],
+    [1, 98, 98],
+    [3, 97, 100],
+    [3, 96, 96],
+    [5, 95, 100],
+    [5, 94, 94],
+    // Levels past the maximum are treated as the maximum.
+    [9, 94, 94],
+  ])("level %i turns %i into %i", (level, quality, expected) => {
+    expect(applyPerfectAssist(quality, { steadyHands: level })).toBe(expected);
+  });
+});
+
+describe("streak shield", () => {
+  it.each([
+    [0, null],
+    [1, 95],
+    [2, 85],
+    [3, 70],
+    [7, 70],
+  ])("level %i covers %s and up", (level, min) => {
+    expect(getShieldMinQuality({ streakShield: level })).toBe(min);
+  });
+
+  it("keeps the streak on a covered miss and reports that it was used", () => {
+    expect(resolveStreak(6, 90, 85)).toEqual({ streak: 6, shieldUsed: true });
+  });
+
+  it("is not spent on a Perfect, a result below its cover, or an empty streak", () => {
+    expect(resolveStreak(6, 100, 85)).toEqual({ streak: 7, shieldUsed: false });
+    expect(resolveStreak(6, 80, 85)).toEqual({ streak: 5, shieldUsed: false });
+    expect(resolveStreak(6, 60, 85)).toEqual({ streak: 0, shieldUsed: false });
+    expect(resolveStreak(0, 90, 85)).toEqual({ streak: 0, shieldUsed: false });
+  });
+
+  it("behaves like the plain streak rule without a shield", () => {
+    expect(resolveStreak(4, 90, null)).toEqual({ streak: nextStreak(4, 90), shieldUsed: false });
+  });
+});
+
+describe("fast learner and fresh orders", () => {
+  it("adds 10% XP per level, rounded per award", () => {
+    expect(getXpMultiplier({})).toBe(1);
+    expect(getXpMultiplier({ fastLearner: 3 })).toBeCloseTo(1.3);
+    expect(boostXp(7, getXpMultiplier({ fastLearner: 3 }))).toBe(9);
+    expect(boostXp(7, 1)).toBe(7);
+  });
+
+  it("gives one reroll per level", () => {
+    expect(getRerollCount({})).toBe(0);
+    expect(getRerollCount({ freshOrders: 2 })).toBe(2);
+    expect(getRerollCount({ freshOrders: 9 })).toBe(3);
+  });
+});
+
+describe("upgrade shop", () => {
+  it("prices the new upgrades from their config", () => {
+    expect(getUpgradeCost("steadyHands", 0)).toBe(80);
+    expect(getUpgradeCost("steadyHands", 4)).toBe(840);
+    expect(getUpgradeCost("streakShield", 2)).toBe(726);
+    expect(getUpgradeCost("freshOrders", 1)).toBe(240);
+    expect(getUpgradeCost("fastLearner", 0)).toBe(100);
+  });
+
+  it("describes each effect in plain words", () => {
+    expect(describeUpgradeEffect("steadyHands", 0)).toBe("Perfect at 100% only");
+    expect(describeUpgradeEffect("steadyHands", 2)).toBe("Perfect from 98%");
+    expect(describeUpgradeEffect("streakShield", 0)).toBe("No shield");
+    expect(describeUpgradeEffect("streakShield", 2)).toBe("Keeps streak at 85%+");
+    expect(describeUpgradeEffect("fastLearner", 2)).toBe("XP +20%");
+    expect(describeUpgradeEffect("freshOrders", 1)).toBe("1 reroll per board");
+    expect(describeUpgradeEffect("freshOrders", 3)).toBe("3 rerolls per board");
   });
 });

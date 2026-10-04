@@ -15,6 +15,8 @@ interface UiState {
   queuedProducts: ProductId[];
   /** The cards currently on the order board. Kept until one is picked, so they never reshuffle. */
   offers: OrderOffer[];
+  /** Rerolls spent on the current board. */
+  rerollsUsed: number;
   toast: { id: number; message: string } | null;
   debug: {
     goldenNext: boolean;
@@ -31,7 +33,8 @@ interface UiState {
   clearLevelUps: () => void;
   queueProducts: (ids: ProductId[]) => void;
   shiftQueuedProduct: () => ProductId | undefined;
-  setOffers: (offers: OrderOffer[]) => void;
+  /** Deals a board. A reroll counts against the board it replaces; a fresh deal starts the count again. */
+  setOffers: (offers: OrderOffer[], reroll?: boolean) => void;
   showToast: (message: string) => void;
   clearToast: (id: number) => void;
   setDebug: (patch: Partial<UiState["debug"]>) => void;
@@ -47,6 +50,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   pendingLevelUps: [],
   queuedProducts: [],
   offers: [],
+  rerollsUsed: 0,
   toast: null,
   debug: { goldenNext: false, qualityOverride: null, stressBursts: 0, variantIndex: null },
 
@@ -61,7 +65,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
     if (next) set({ queuedProducts: rest });
     return next;
   },
-  setOffers: (offers) => set({ offers }),
+  setOffers: (offers, reroll = false) => set((s) => ({ offers, rerollsUsed: reroll ? s.rerollsUsed + 1 : 0 })),
   showToast: (message) => set({ toast: { id: ++toastId, message } }),
   clearToast: (id) => set((s) => (s.toast?.id === id ? { toast: null } : s)),
   setDebug: (patch) => set((s) => ({ debug: { ...s.debug, ...patch } })),
@@ -72,6 +76,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
       pendingLevelUps: [],
       queuedProducts: [],
       offers: [],
+      rerollsUsed: 0,
       debug: { goldenNext: false, qualityOverride: null, stressBursts: 0, variantIndex: null },
     }),
 }));
