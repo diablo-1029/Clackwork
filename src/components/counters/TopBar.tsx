@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { audio } from "@/audio/audioManager";
+import { AppMark } from "@/components/ui/AppMark";
 import { Meter } from "@/components/ui/Chunky";
 import { Icon } from "@/components/ui/Icon";
 import { useAnimatedNumber } from "@/components/ui/useAnimatedNumber";
@@ -155,9 +156,7 @@ export function TopBar() {
   return (
     <header className="flex items-center gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2.5 sm:gap-3 sm:px-4 lg:px-6">
       <h1 className="sf-title hidden shrink-0 items-center gap-2 text-xl text-brand-deep md:flex">
-        <span className="sf-tile sf-tone-orange flex size-8 items-center justify-center rounded-lg" aria-hidden>
-          <Icon name="settings" size={19} strokeWidth={2.4} />
-        </span>
+        <AppMark size={32} className="shrink-0" />
         Clackwork
       </h1>
       <LevelMeter />
