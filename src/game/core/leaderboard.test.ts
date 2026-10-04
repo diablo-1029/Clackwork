@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchTopScores, isOnlineBoardConfigured, submitScore } from "@/lib/onlineBoard";
+import { FEEDBACK_MAX_LENGTH, fetchTopScores, isOnlineBoardConfigured, sendFeedback, submitScore } from "@/lib/onlineBoard";
 import { addShiftRecord, cleanName, isNameAllowed, type ShiftRecord } from "./leaderboard";
 
 const record = (score: number, at = "2026-10-04T10:00:00.000Z"): ShiftRecord => ({ score, products: 3, at });
@@ -131,5 +131,34 @@ describe("shared board client", () => {
     const refused = vi.fn().mockResolvedValue({ ok: false });
     expect(await fetchTopScores(20, config, down)).toBeNull();
     expect(await submitScore({ name: "Ryan", score: 100, products: 1 }, config, refused)).toBe(false);
+  });
+});
+
+describe("feedback", () => {
+  const config = { url: "https://example.supabase.co", key: "public-key" };
+
+  it("sends the message with the version and level", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true });
+    expect(await sendFeedback({ message: "  More machines please  ", version: "1.0.0", level: 7.9 }, config, fetcher)).toBe(true);
+    const [url, init] = fetcher.mock.calls[0];
+    expect(url).toBe("https://example.supabase.co/rest/v1/rpc/send_feedback");
+    expect(JSON.parse(init.body)).toMatchObject({ p_message: "More machines please", p_version: "1.0.0", p_level: 7 });
+  });
+
+  it("keeps line breaks, drops control characters and caps the length", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true });
+    await sendFeedback({ message: "one\ntwo\u0000" + "x".repeat(900), version: "1.0.0", level: 1 }, config, fetcher);
+    const sent = JSON.parse(fetcher.mock.calls[0][1].body).p_message as string;
+    expect(sent.startsWith("one\ntwo")).toBe(true);
+    expect(sent).not.toContain("\u0000");
+    expect(sent).toHaveLength(FEEDBACK_MAX_LENGTH);
+  });
+
+  it("does not send an empty message, and reports a refusal", async () => {
+    const fetcher = vi.fn();
+    expect(await sendFeedback({ message: "   ", version: "1.0.0", level: 1 }, config, fetcher)).toBe(false);
+    expect(fetcher).not.toHaveBeenCalled();
+    const refused = vi.fn().mockResolvedValue({ ok: false });
+    expect(await sendFeedback({ message: "hello", version: "1.0.0", level: 1 }, config, refused)).toBe(false);
   });
 });

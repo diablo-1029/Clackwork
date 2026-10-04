@@ -70,6 +70,8 @@ export function setPlayerName(name: string): string {
 
 type Fetch = typeof fetch;
 
+export const FEEDBACK_MAX_LENGTH = 500;
+
 async function call(
   fn: string,
   body: Record<string, unknown>,
@@ -137,4 +139,27 @@ export async function fetchTopScores(
   } catch {
     return null;
   }
+}
+
+/**
+ * Sends a note from the Settings feedback form to the same database (docs/leaderboard-setup.md, step 4).
+ * Resolves false if it could not be sent, including when the database refuses it for arriving too often.
+ */
+export async function sendFeedback(
+  entry: { message: string; version: string; level: number },
+  config: BoardConfig = boardConfig,
+  fetcher: Fetch = fetch,
+): Promise<boolean> {
+  const message = entry.message
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+    .trim()
+    .slice(0, FEEDBACK_MAX_LENGTH);
+  if (!message) return false;
+  const response = await call(
+    "send_feedback",
+    { p_player: getPlayerId(), p_message: message, p_version: entry.version.slice(0, 20), p_level: Math.floor(entry.level) },
+    config,
+    fetcher,
+  );
+  return response !== null;
 }

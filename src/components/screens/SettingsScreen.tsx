@@ -13,6 +13,7 @@ import { usePlayerStore } from "@/stores/playerStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { ParticleDensity, ThemeMode } from "@/types/settings";
+import { FeedbackPanel } from "./FeedbackPanel";
 import { ScreenFrame } from "./ScreenFrame";
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
@@ -264,6 +265,8 @@ export function SettingsScreen() {
           )}
         </Row>
       </Panel>
+
+      <FeedbackPanel />
 
       {debugTools && <DebugPanel />}
 

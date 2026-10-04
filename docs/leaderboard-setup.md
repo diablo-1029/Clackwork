@@ -187,6 +187,58 @@ grant execute on function public.top_scores(uuid, integer, text) to anon;
 Until this is run the game still works: the all-time board shows, and
 "This week" says it cannot be reached.
 
+## 4. Feedback form (run once)
+
+The Feedback box in Settings saves notes into a `feedback` table. Paste this
+into the **SQL Editor** and press **Run**. Read what people send in
+**Table Editor → feedback**.
+
+```sql
+create table if not exists public.feedback (
+  id bigint generated always as identity primary key,
+  player_id uuid,
+  message text not null check (char_length(message) between 1 and 500),
+  version text,
+  level integer,
+  created_at timestamptz not null default now()
+);
+
+-- No policies: nobody can read or write the table directly, only through the function.
+alter table public.feedback enable row level security;
+
+create or replace function public.send_feedback(p_player uuid, p_message text, p_version text default null, p_level integer default null)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_message text := left(btrim(coalesce(p_message, '')), 500);
+begin
+  if v_message = '' then
+    raise exception 'empty feedback';
+  end if;
+  -- One note a minute per device, and the table as a whole cannot be flooded.
+  if p_player is not null and exists (
+    select 1 from feedback where player_id = p_player and created_at > now() - interval '1 minute'
+  ) then
+    raise exception 'too many notes';
+  end if;
+  if (select count(*) from feedback where created_at > now() - interval '1 hour') > 300 then
+    raise exception 'too many notes';
+  end if;
+
+  insert into feedback (player_id, message, version, level)
+  values (p_player, v_message, left(coalesce(p_version, ''), 20), p_level);
+end;
+$$;
+
+revoke all on function public.send_feedback(uuid, text, text, integer) from public;
+grant execute on function public.send_feedback(uuid, text, text, integer) to anon;
+```
+
+Until this is run, the form shows "That did not send".
+
 ## What to know
 
 - Scores are sent by the game itself. The database rejects impossible ones, but
