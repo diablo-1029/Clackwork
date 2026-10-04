@@ -15,7 +15,7 @@ export function ProductionProgress({ run, phase }: { run: ProductionRun; phase: 
   const compact = run.machineSequence.length > 5;
 
   return (
-    <ol className={`flex items-center justify-center px-1 ${compact ? "gap-1" : "gap-1 sm:gap-2"}`} aria-label="Production chain">
+    <ol className={`flex items-center justify-center px-1 pb-1 ${compact ? "gap-1" : "gap-1 sm:gap-2"}`} aria-label="Production chain">
       {run.machineSequence.map((id, index) => {
         const done = finished || index < run.results.length;
         const active = !done && index === run.currentMachineIndex && phase !== "ORDER_INTRO";
@@ -28,19 +28,19 @@ export function ProductionProgress({ run, phase }: { run: ProductionRun; phase: 
             {index > 0 && (
               <li
                 aria-hidden
-                className={`h-1 min-w-1 shrink rounded-full ${compact ? "w-2 sm:w-4" : "w-3 sm:w-8"} ${
+                className={`h-1.5 min-w-1 shrink rounded-full ${compact ? "w-2 sm:w-4" : "w-3 sm:w-8"} ${
                   done || active ? "bg-brand" : "bg-line"
                 }`}
               />
             )}
             <li
               aria-current={active ? "step" : undefined}
-              className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-extrabold transition-colors duration-200 sm:px-3 sm:text-sm ${
+              className={`flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-xs font-extrabold transition-colors duration-200 sm:px-3 sm:text-sm ${
                 done
-                  ? "bg-success/15 text-success"
+                  ? "sf-chip sf-tone-green text-success"
                   : active
-                    ? "bg-brand-deep text-white shadow-sm"
-                    : "bg-surface-2 text-muted"
+                    ? "sf-tile sf-tone-deep"
+                    : "sf-chip sf-tone-neutral text-muted"
               }`}
             >
               <Icon name={done ? "check" : id} size={16} strokeWidth={done ? 3 : 2} />

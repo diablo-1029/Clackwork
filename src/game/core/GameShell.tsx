@@ -17,6 +17,7 @@ import { themes } from "@/config/themes";
 import { initPersistence } from "@/stores/persistence";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
+import { FactoryBackdrop } from "./FactoryBackdrop";
 import { ProductionRunController } from "./ProductionRunController";
 
 function FactoryScreen() {
@@ -31,7 +32,7 @@ function FactoryScreen() {
         <ProductionRunController />
       ) : (
         <div className="sf-stage relative h-full overflow-hidden rounded-3xl">
-          <div className="sf-belt absolute inset-x-0 bottom-0 h-3" aria-hidden />
+          <FactoryBackdrop />
           <StartScreen />
         </div>
       )}

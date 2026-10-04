@@ -9,8 +9,8 @@ import type { QualityTier } from "@/types/game";
 const tierStyle: Record<QualityTier, string> = {
   perfect: "bg-orange text-navy",
   excellent: "bg-brand-deep text-white",
-  good: "bg-surface text-ink",
-  low: "bg-surface text-muted",
+  good: "bg-surface-2 text-ink",
+  low: "bg-surface-2 text-muted",
 };
 
 export function ResultFeedback({ feedback }: { feedback: MachineFeedback }) {
@@ -25,14 +25,14 @@ export function ResultFeedback({ feedback }: { feedback: MachineFeedback }) {
       transition={{ duration: perfect ? 0.34 : 0.26, ease: "easeOut" }}
       role="status"
     >
-      <span className="text-2xl font-black tabular-nums text-stage-ink sm:text-3xl">{feedback.quality}%</span>
+      <span className="text-2xl font-black tabular-nums sm:text-3xl">{feedback.quality}%</span>
       <span
         className={`relative overflow-hidden rounded-xl px-3 py-1 text-lg font-black tracking-wide shadow-sm sm:text-xl ${tierStyle[band.tier]}`}
       >
         {band.label}
         {perfect && <span className="sf-shine pointer-events-none absolute inset-0" aria-hidden />}
       </span>
-      <span className="flex flex-col text-left text-sm leading-tight font-black text-stage-ink">
+      <span className="flex flex-col text-left text-sm leading-tight font-black">
         <span>+{feedback.xp} XP</span>
         {perfect && feedback.streak >= 2 && <span className="text-orange">PERFECT x{feedback.streak}</span>}
       </span>

@@ -18,7 +18,7 @@ export function OrderValueChip({ value }: { value: number }) {
       initial={{ scale: 1.25 }}
       animate={{ scale: 1 }}
       transition={{ type: "spring", stiffness: 480, damping: 16 }}
-      className="flex items-center gap-1 rounded-full bg-surface px-2 py-0.5 text-sm font-black text-ink tabular-nums shadow-sm"
+      className="sf-chip sf-tone-gold flex shrink-0 items-center gap-1 rounded-lg px-2 py-0.5 text-sm font-black text-ink tabular-nums"
       aria-label={`Order value ${value} coins`}
     >
       <Icon name="coin" size={15} />

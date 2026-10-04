@@ -9,6 +9,7 @@ import { LevelUpOverlay } from "@/components/overlays/LevelUpOverlay";
 import { OrderBoard } from "@/components/overlays/OrderBoard";
 import { OrderIntro } from "@/components/overlays/OrderIntro";
 import { RewardSummaryCard } from "@/components/overlays/RewardSummaryCard";
+import { Ribbon } from "@/components/ui/Chunky";
 import { Icon } from "@/components/ui/Icon";
 import { machines } from "@/config/machines";
 import { products } from "@/config/products";
@@ -24,6 +25,7 @@ import { useRunStore } from "@/stores/runStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { QualityTier, SoundKey } from "@/types/game";
 import { MachineStage } from "./MachineStage";
+import { FactoryBackdrop } from "./FactoryBackdrop";
 import { ProductionProgress } from "./ProductionProgress";
 import { isFeatureUnlocked } from "@/game/progression/unlocks";
 import type { OrderOffer } from "@/types/game";
@@ -175,7 +177,7 @@ export function ProductionRunController() {
     if (!boardUnlocked) return null;
     return (
       <div className="sf-stage relative h-full overflow-hidden rounded-3xl">
-        <div className="sf-belt absolute inset-x-0 bottom-0 h-3" aria-hidden />
+        <FactoryBackdrop />
         {/* Levels gained outside an order are celebrated before the cards are dealt. */}
         {pendingLevelUps.length > 0 ? (
           <LevelUpOverlay levels={pendingLevelUps} onContinue={clearLevelUps} />
@@ -245,29 +247,32 @@ export function ProductionRunController() {
         // Result feedback can be tapped away; nothing else on the stage listens for clicks.
         onClick={phase === "RESULT_FEEDBACK" ? () => dispatch("CONTINUE") : undefined}
       >
-        <div className="sf-belt absolute inset-x-0 bottom-0 h-3" aria-hidden />
+        <FactoryBackdrop />
 
-        <div className="absolute inset-x-0 top-0 flex h-11 items-center justify-center gap-2 px-3">
-          {run.isGolden && (
-            <span className="flex items-center gap-1 rounded-full bg-gold px-2 py-0.5 text-xs font-black text-navy">
-              <Icon name="sparkle" size={12} fill="currentColor" strokeWidth={0} />
-              GOLDEN
-            </span>
-          )}
-          <h2 className="text-base font-black tracking-widest text-stage-ink uppercase sm:text-lg">{product.name}</h2>
-          {phase !== "ORDER_INTRO" && <OrderValueChip value={orderValue} />}
-          {run.twist && (
-            <span className="rounded-full bg-orange px-2 py-0.5 text-xs font-black text-navy uppercase" title={describeTwist(run.twist).rule}>
-              {describeTwist(run.twist).name}
-            </span>
-          )}
+        {/* The order's name plate, hung at the top of the stage. */}
+        <div className="absolute inset-x-0 top-1.5 flex justify-center px-2">
+          <div className="sf-raised flex h-10 max-w-full items-center gap-2 rounded-2xl px-3 text-ink">
+            {run.isGolden && (
+              <Ribbon tone="gold" className="px-2 tracking-normal">
+                <Icon name="sparkle" size={12} fill="currentColor" strokeWidth={0} />
+                Golden
+              </Ribbon>
+            )}
+            <h2 className="truncate text-sm font-black tracking-widest uppercase sm:text-base">{product.name}</h2>
+            {phase !== "ORDER_INTRO" && <OrderValueChip value={orderValue} />}
+            {run.twist && (
+              <Ribbon tone="orange" className="px-2 tracking-normal" title={describeTwist(run.twist).rule}>
+                {describeTwist(run.twist).name}
+              </Ribbon>
+            )}
+          </div>
         </div>
 
-        <div className="sf-machine-slot absolute inset-x-2 top-11 bottom-[4.75rem] flex items-center justify-center sm:inset-x-4 lg:bottom-[4.25rem]">
+        <div className="sf-machine-slot absolute inset-x-2 top-[3.25rem] bottom-[5.5rem] flex items-end justify-center sm:inset-x-4">
           {machineVisible && (
             <motion.div
               key={`${run.id}-${run.currentMachineIndex}`}
-              className="sf-machine-box"
+              className="sf-machine-box relative"
               // A short arrival so the machine is under the finger almost at once.
               initial={{ x: "16%", opacity: 0 }}
               animate={phase === "MACHINE_EXIT" ? { x: "-45%", opacity: 0 } : { x: 0, opacity: 1 }}
@@ -275,6 +280,7 @@ export function ProductionRunController() {
                 phase === "MACHINE_EXIT" ? { duration: 0.3, ease: "easeIn" } : { duration: 0.2, ease: "easeOut" }
               }
             >
+              <div className="sf-ground" aria-hidden />
               <MachineStage
                 machineId={machineId}
                 runId={run.id}
@@ -296,19 +302,22 @@ export function ProductionRunController() {
           )}
         </div>
 
-        <div className="absolute inset-x-0 bottom-3 flex h-16 flex-col items-center justify-center px-3 text-center">
+        {/* The sign on the factory floor: what to do, then how it went. */}
+        <div className="absolute inset-x-0 bottom-1.5 flex h-[4.25rem] items-center justify-center px-2 text-center">
           {showingResult ? (
-            <ResultFeedback key={`${run.id}-${run.results.length}`} feedback={feedback} />
+            <div className="sf-raised flex min-h-14 items-center rounded-2xl px-4 py-1 text-ink">
+              <ResultFeedback key={`${run.id}-${run.results.length}`} feedback={feedback} />
+            </div>
           ) : (
             machineVisible &&
             phase !== "MACHINE_EXIT" && (
-              <>
-                <p className="text-[11px] font-black tracking-[0.2em] text-stage-soft uppercase">
+              <div className="sf-raised flex min-h-14 max-w-full flex-col justify-center rounded-2xl px-4 py-1 text-ink">
+                <p className="text-[10px] font-black tracking-[0.2em] text-brand-deep uppercase">
                   {machine.name}
                   {stepLabel && ` · ${stepLabel}`}
                 </p>
-                <p className="text-lg font-extrabold text-stage-ink sm:text-xl">{instruction}</p>
-              </>
+                <p className="text-base leading-tight font-extrabold sm:text-lg">{instruction}</p>
+              </div>
             )
           )}
         </div>
