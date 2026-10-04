@@ -38,7 +38,16 @@ export function DebugPanel() {
 
   return (
     <div className="mt-4 rounded-3xl border-2 border-dashed border-orange bg-surface p-3">
-      <h3 className="text-xs font-black tracking-widest text-orange uppercase">Debug (development only)</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-black tracking-widest text-orange uppercase">Debug tools</h3>
+        <button
+          type="button"
+          className="min-h-9 rounded-lg px-2 text-xs font-black text-muted underline"
+          onClick={() => useUiStore.getState().toggleDebugTools()}
+        >
+          Hide
+        </button>
+      </div>
       <div className="mt-2 flex flex-wrap gap-2">
         <Button variant="ghost" onClick={() => usePlayerStore.getState().addCoins(1000)}>
           +1000 Coins

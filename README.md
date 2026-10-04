@@ -27,7 +27,7 @@ Then open http://localhost:3000.
 
 | Command | What it does |
 | --- | --- |
-| `npm run dev` | Development server (includes the debug panel under Settings) |
+| `npm run dev` | Development server |
 | `npm run build` | Static production build into `out/` (deploy to any static host) |
 | `npm test` | Unit and integration tests (Vitest) |
 | `npm run lint` | ESLint |

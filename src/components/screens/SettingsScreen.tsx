@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { audio } from "@/audio/audioManager";
 import { DebugPanel } from "@/components/overlays/DebugPanel";
 import { Button } from "@/components/ui/Button";
 import { Panel, Ribbon } from "@/components/ui/Chunky";
 import { Icon, type IconName } from "@/components/ui/Icon";
+import { SECRET_TAP_WINDOW_MS, SECRET_TAPS } from "@/lib/debugAccess";
 import { resetGame } from "@/stores/persistence";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useUiStore } from "@/stores/uiStore";
 import type { ParticleDensity, ThemeMode } from "@/types/settings";
 import { ScreenFrame } from "./ScreenFrame";
 
@@ -118,10 +120,22 @@ export function SettingsScreen() {
   const totalProducts = usePlayerStore((s) => s.totalProductsCompleted);
   const totalPerfects = usePlayerStore((s) => s.totalPerfects);
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const debugTools = useUiStore((s) => s.debugTools);
+  const taps = useRef<number[]>([]);
+
+  // Tapping the header icon quickly, several times, toggles the hidden debug tools.
+  const secretTap = () => {
+    const now = Date.now();
+    taps.current = [...taps.current.filter((time) => now - time < SECRET_TAP_WINDOW_MS), now];
+    if (taps.current.length >= SECRET_TAPS) {
+      taps.current = [];
+      useUiStore.getState().toggleDebugTools();
+    }
+  };
   const { audio: sound } = settings;
 
   return (
-    <ScreenFrame title="Settings" icon="settings" narrow>
+    <ScreenFrame title="Settings" icon="settings" narrow onIconTap={secretTap}>
       <Panel className="p-4">
         <Ribbon tone="blue">Sound</Ribbon>
         <Row label="Sound">
@@ -241,7 +255,7 @@ export function SettingsScreen() {
         </Row>
       </Panel>
 
-      {process.env.NODE_ENV === "development" && <DebugPanel />}
+      {debugTools && <DebugPanel />}
     </ScreenFrame>
   );
 }

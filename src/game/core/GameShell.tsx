@@ -15,6 +15,7 @@ import { ThemesScreen } from "@/components/screens/ThemesScreen";
 import { UpgradesScreen } from "@/components/screens/UpgradesScreen";
 import { Button } from "@/components/ui/Button";
 import { themes } from "@/config/themes";
+import { readDebugAccess, typeSecret } from "@/lib/debugAccess";
 import { initPersistence } from "@/stores/persistence";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
@@ -57,6 +58,22 @@ export function GameShell() {
     }
     // Today's goals are dealt as soon as the save is in, so the start screen can show them.
     refreshGoals();
+  }, []);
+
+  // The hidden debug tools: remembered per device, toggled by typing the secret word.
+  useEffect(() => {
+    if (readDebugAccess()) useUiStore.setState({ debugTools: true });
+
+    let buffer = "";
+    const onKey = (event: KeyboardEvent) => {
+      // Typing into a field is never part of the word.
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+      const typed = typeSecret(buffer, event.key);
+      buffer = typed.matched ? "" : typed.buffer;
+      if (typed.matched) useUiStore.getState().toggleDebugTools();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   // "System" leaves the attribute off so the CSS media query decides.

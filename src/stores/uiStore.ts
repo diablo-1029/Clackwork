@@ -1,3 +1,4 @@
+import { writeDebugAccess } from "@/lib/debugAccess";
 import { create } from "zustand";
 import type { OrderOffer, ProductId } from "@/types/game";
 
@@ -18,6 +19,8 @@ interface UiState {
   /** Rerolls spent on the current board. */
   rerollsUsed: number;
   toast: { id: number; message: string } | null;
+  /** The hidden debug tools in Settings are switched on (see lib/debugAccess). */
+  debugTools: boolean;
   debug: {
     goldenNext: boolean;
     qualityOverride: number | null;
@@ -36,6 +39,8 @@ interface UiState {
   /** Deals a board. A reroll counts against the board it replaces; a fresh deal starts the count again. */
   setOffers: (offers: OrderOffer[], reroll?: boolean) => void;
   showToast: (message: string) => void;
+  /** Switches the hidden debug tools on or off and remembers it on this device. */
+  toggleDebugTools: () => void;
   clearToast: (id: number) => void;
   setDebug: (patch: Partial<UiState["debug"]>) => void;
   reset: () => void;
@@ -52,6 +57,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   offers: [],
   rerollsUsed: 0,
   toast: null,
+  debugTools: false,
   debug: { goldenNext: false, qualityOverride: null, stressBursts: 0, variantIndex: null },
 
   setHydrated: () => set({ hydrated: true }),
@@ -67,6 +73,11 @@ export const useUiStore = create<UiState>()((set, get) => ({
   },
   setOffers: (offers, reroll = false) => set((s) => ({ offers, rerollsUsed: reroll ? s.rerollsUsed + 1 : 0 })),
   showToast: (message) => set({ toast: { id: ++toastId, message } }),
+  toggleDebugTools: () => {
+    const debugTools = !get().debugTools;
+    writeDebugAccess(debugTools);
+    set({ debugTools, toast: { id: ++toastId, message: debugTools ? "Debug tools on" : "Debug tools off" } });
+  },
   clearToast: (id) => set((s) => (s.toast?.id === id ? { toast: null } : s)),
   setDebug: (patch) => set((s) => ({ debug: { ...s.debug, ...patch } })),
   reset: () =>
